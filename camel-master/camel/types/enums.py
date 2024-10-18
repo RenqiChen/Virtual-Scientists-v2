@@ -89,6 +89,9 @@ class ModelType(Enum):
     REKA_FLASH = "reka-flash"
     REKA_EDGE = "reka-edge"
 
+    # Intern models
+    INTERN_VL = "OpenGVLab/InternVL2-26B"
+
     @property
     def value_for_tiktoken(self) -> str:
         if self.is_openai:
@@ -221,6 +224,13 @@ class ModelType(Enum):
             ModelType.REKA_CORE,
             ModelType.REKA_EDGE,
             ModelType.REKA_FLASH,
+        }
+
+    @property
+    def is_intern(self) -> bool:
+        r"""Returns whether this type of models is an Intern model."""
+        return self in {
+            ModelType.INTERN_VL,
         }
 
     @property
@@ -485,6 +495,7 @@ class ModelPlatformType(Enum):
     TOGETHER = "together"
     OPENAI_COMPATIBILITY_MODEL = "openai-compatibility-model"
     SAMBA = "samba-nova"
+    INTERN = "intern"
 
     @property
     def is_openai(self) -> bool:
@@ -561,6 +572,11 @@ class ModelPlatformType(Enum):
     def is_samba(self) -> bool:
         r"""Returns whether this platform is Samba Nova."""
         return self is ModelPlatformType.SAMBA
+
+    @property
+    def is_intern(self) -> bool:
+        r"""Returns whether this platform is Intern."""
+        return self is ModelPlatformType.INTERN
 
 
 class AudioModelType(Enum):

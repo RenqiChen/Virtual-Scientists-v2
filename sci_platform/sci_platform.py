@@ -11,7 +11,7 @@ sys.path.append('../camel-master')
 from camel.agents import SciAgent
 from camel.messages import BaseMessage
 from camel.models import ModelFactory
-from camel.types import ModelPlatformType
+from camel.types import ModelPlatformType, ModelType
 
 from sci_team.SciTeam import Team
 from utils.prompt import Prompts
@@ -42,7 +42,8 @@ class Platform:
                  info_dir: str = "team_info",
                  hop_num: int = 2,
                  group_max_discuss_iteration: int = 7, # 6， 7
-                 recent_n_team_mem_for_retrieve: int = 1,
+                 recent_n_team_mem_for_retrieve: int = 3,
+                 recent_n_agent_mem_for_retrieve: int = 1,
                  team_limit: int = 2,
                  check_iter: int = 5,
                  review_num: int = 2,
@@ -60,6 +61,7 @@ class Platform:
         self.adjacency_matrix_dir = os.path.join(root_dir, adjacency_matrix_dir)
         self.group_max_discuss_iteration = group_max_discuss_iteration
         self.recent_n_team_mem_for_retrieve = recent_n_team_mem_for_retrieve
+        self.recent_n_agent_mem_for_retrieve = recent_n_agent_mem_for_retrieve
         # how many teams for one agent is allowed
         self.team_limit = team_limit
         # how many times to try paper search
@@ -114,6 +116,14 @@ class Platform:
             model_config_dict={"temperature": 0.4},
         )
 
+        # model = ModelFactory.create(
+        #     model_platform=ModelPlatformType.INTERN,
+        #     model_type = ModelType.INTERN_VL,
+        #     api_key="sk-gaqeyxvrpmjondtmihuydxjevoztjgibkfmfqyhgmonhfsml",
+        #     url="https://api.siliconflow.cn/v1",
+        #     model_config_dict={"temperature": 0.4},
+        # )
+
         # init agent pool
         self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
         self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
@@ -129,7 +139,8 @@ class Platform:
             team_index.append(agent.role_name)
             team_dic = Team(team_name = str(agent_id)+','+str(1),
                             log_dir = self.log_dir,
-                            info_dir = self.info_dir)
+                            info_dir = self.info_dir,
+                            recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)
             team_dic.teammate = team_index
             team_agent.append(team_dic)
             self.team_pool.append(team_agent)
@@ -153,7 +164,7 @@ class Platform:
             role_name=name,
             content=f'You are {name}. ' + Prompts.prompt_review_system,
         )
-        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = 1)
+        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
 
     def init_agent(self, agent_id, model, information_path):
@@ -165,7 +176,7 @@ class Platform:
             role_name=name,
             content=f'You are {name}. ' + prompt,
         )
-        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = 1)
+        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
         return agent
 
@@ -259,7 +270,8 @@ class Platform:
             if is_contained == False:
                 team_dic = Team(team_name = str(agent_index+1)+','+str(len(self.team_pool[agent_index])+1),
                                 log_dir = self.log_dir,
-                                info_dir = self.info_dir)
+                                info_dir = self.info_dir,
+                                recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)
                 team_dic.state=2
                 team_dic.teammate = team_index
                 team_list[agent_index].append(team_dic)

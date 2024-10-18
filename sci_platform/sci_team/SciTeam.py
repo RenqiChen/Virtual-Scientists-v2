@@ -30,14 +30,14 @@ from utils.scientist_utils import (
 )
 
 class Team:
-    def __init__(self, team_name, log_dir, info_dir):
+    def __init__(self, team_name, log_dir, info_dir, recent_n_team_mem_for_retrieve):
         # attrs
         self.team_name = team_name
         self.state = 1
         self.epoch = -1
         self.teammate = []
         self.memory = []
-        self.n_memory2retrieve = 3
+        self.recent_n_team_mem_for_retrieve = recent_n_team_mem_for_retrieve
         self.topic = None
         self.idea = None
         self.abstract = None
@@ -101,7 +101,7 @@ class Team:
 
         if team_memories is not None and len(team_memories) != 0:
             format_team_memories = f'{memory_type_hint[2]}:\n'
-            for memory in team_memories[-self.n_memory2retrieve:]:
+            for memory in team_memories[-self.recent_n_team_mem_for_retrieve:]:
                 format_team_memories += (memory.content + '\n')
 
             output = format_team_memories + output

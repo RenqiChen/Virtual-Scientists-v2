@@ -30,6 +30,7 @@ from camel.models.stub_model import StubModel
 from camel.models.togetherai_model import TogetherAIModel
 from camel.models.vllm_model import VLLMModel
 from camel.models.zhipuai_model import ZhipuAIModel
+from camel.models.intern_model import InternModel
 from camel.types import ModelPlatformType, ModelType
 from camel.utils import BaseTokenCounter
 
@@ -98,6 +99,8 @@ class ModelFactory:
                 model_class = RekaModel
             elif model_type == ModelType.STUB:
                 model_class = StubModel
+            elif model_platform.is_intern and model_type.is_intern:
+                model_class = InternModel
             else:
                 raise ValueError(
                     f"Unknown pair of model platform `{model_platform}` "
