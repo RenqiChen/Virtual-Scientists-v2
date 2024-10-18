@@ -12,7 +12,7 @@ import re
 import os
 import sys
 
-sys.path.append('agentscope-main/src')
+sys.path.append('../camel-master')
 # from agentscope.service import (
 #     dblp_search_publications,  # or google_search,
 #     arxiv_search
@@ -438,3 +438,56 @@ def most_frequent_element(arr):
     most_common_element = count.most_common(1)[0][0]
 
     return most_common_element
+
+def read_txt_files_as_list(folder_path):
+    dict_list = []  
+
+    for filename in tqdm(os.listdir(folder_path)):
+        if filename.endswith(".txt"):  
+            file_path = os.path.join(folder_path, filename)
+            with open(file_path, 'r') as file:
+                file_content = file.read()
+                dict_list.append(file_content)
+    return dict_list
+
+def process_author_text(input_text):
+    # 拆分出各个部分信息
+    name_start = input_text.find("Your name is")
+    name_end = input_text.find(",", name_start)
+    name = input_text[name_start + len("Your name is "):name_end]
+
+    # 处理affiliations部分
+    affiliations_start = input_text.find("following affiliations")
+    affiliations_end = input_text.find("],", affiliations_start)
+    affiliations = input_text[affiliations_start + len("following affiliations "):affiliations_end + 1]
+    affiliations = affiliations.replace("['", "").replace("']", "").replace("', '", "; ")
+
+    # 处理research topics部分
+    topics_start = input_text.find("following topics")
+    topics_end = input_text.find("],", topics_start)
+    topics = input_text[topics_start + len("following topics "):topics_end + 1]
+    topics = topics.replace("['", "").replace("']", "").replace("', '", ", ")
+
+    # 处理发表论文数和引用数
+    papers_start = input_text.find("published")
+    papers_end = input_text.find("papers", papers_start)
+    num_papers = input_text[papers_start + len("published "):papers_end].strip()
+
+    citations_start = input_text.find("have", papers_end)
+    citations_end = input_text.find("citations", citations_start)
+    num_citations = input_text[citations_start + len("have "):citations_end].strip()
+
+    # 处理合作伙伴部分
+    collaborators_start = input_text.find("these individuals")
+    collaborators_end = input_text.find("].", collaborators_start)
+    collaborators = input_text[collaborators_start + len("these individuals "):collaborators_end + 1]
+    collaborators = collaborators.replace("['", "").replace("']", "").replace("', '", ", ")
+
+    # 拼接客观表述的结果
+    output_text = (
+        f"{name} is affiliated with the following institutions: {affiliations}. "
+        f"Their research has focused on topics such as {topics}. "
+        f"{name} has published {num_papers} papers and has received {num_citations} citations. "
+        f"Previous collaborations include work with individuals such as {collaborators}."
+    )
+    return output_text

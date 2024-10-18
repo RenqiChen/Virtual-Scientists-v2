@@ -14,12 +14,18 @@ def parse_arguments():
     #     action="store_true",
     #     help="Skip novelty check and use existing ideas",
     # )
-
+    # how many scientists
+    parser.add_argument(
+        "--agent_num",
+        type=int,
+        default=3,
+        help="How many scientist leaders.",
+    )
     # how many runs
     parser.add_argument(
         "--runs",
         type=int,
-        default=10,
+        default=1,
         help="Calculate average on how many runs.",
     )
     # team limit
@@ -32,13 +38,13 @@ def parse_arguments():
     parser.add_argument(
         "--max_discuss_iteration",
         type=int,
-        default=2,
+        default=1,
         help="Max discuss iteration.",
     )
     parser.add_argument(
         "--max_team_member",
         type=int,
-        default=2,
+        default=4,
         help="Max team mamber of a team, actual team size is max_team_member.",
     )
     parser.add_argument(

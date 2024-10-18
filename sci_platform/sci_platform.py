@@ -22,6 +22,9 @@ from utils.scientist_utils import (
     read_txt_files_as_dict,
     extract_between_json_tags,
     count_team,
+    save2database,
+    read_txt_files_as_list,
+    process_author_text
 )
 
 class Platform:
@@ -31,6 +34,7 @@ class Platform:
                  model_configuration: str = './configs/model_configs.json',
                  agent_num: int = 1,
                  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
+                 author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
                  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers",
                  future_paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers_future",
                  author_info_dir: str = 'authors',
@@ -40,18 +44,17 @@ class Platform:
                  knowledgeBank_config_dir: str = "./configs/knowledge_config.json",
                  log_dir: str = 'logs',
                  info_dir: str = "team_info",
-                 hop_num: int = 2,
-                 group_max_discuss_iteration: int = 7, # 6， 7
+                 group_max_discuss_iteration: int = 2, # 6， 7
                  recent_n_team_mem_for_retrieve: int = 3,
                  recent_n_agent_mem_for_retrieve: int = 1,
                  team_limit: int = 2,
                  check_iter: int = 5,
                  review_num: int = 2,
-                 max_teammember: int = 3, # 3， 7， 9
+                 max_teammember: int = 3, 
                  cite_number: int = 8,
                  default_mark: int = 4,
                  skip_check: bool = False,
-                 over_state: int = 8,
+                 over_state: int = 7,
                  begin_state: int = 1
                  ):
         self.agent_num = agent_num
@@ -83,6 +86,7 @@ class Platform:
         # output dir
         self.log_dir = log_dir
         self.info_dir = info_dir
+        self.author_folder_path = author_folder_path
 
         # for quality, the team of one member will think more times
         self.think_times = max_teammember+1
@@ -151,12 +155,17 @@ class Platform:
         res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
 
-        cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
-        future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
-        self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
+        cpu_authors_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_authors.index")  # 加载索引
+        authors_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
+        self.gpu_authors_index = faiss.index_cpu_to_gpu(authors_res, 0, cpu_authors_index)  # 将索引移到 GPU
+
+        # cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
+        # future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
+        # self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
-        self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
+        self.author_dicts = read_txt_files_as_dict(self.author_folder_path)
+        # self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
     def init_reviewer(self, agent_id, model):
         name = 'Paper Reviewer{}'.format(agent_id)
@@ -174,7 +183,7 @@ class Platform:
         name = 'Scientist{}'.format(agent_id)
         prompt = BaseMessage.make_assistant_message(
             role_name=name,
-            content=f'You are {name}. ' + prompt,
+            content=prompt,
         )
         agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
@@ -187,9 +196,6 @@ class Platform:
         for agent_index in range(len(scientists)):
             # avoid too many teams
             if count_team(team_list[agent_index], self.over_state)>=self.team_limit:
-                # choose to enforcely add the owner as a team
-                if team_list[agent_index][0].state==1:
-                    team_list[agent_index][0].state=2
                 continue
             scientists[agent_index].sys_prompt = scientists[agent_index].orig_sys_message.content + Prompts.role
             hint = BaseMessage.make_user_message(role_name="user",
@@ -250,7 +256,7 @@ class Platform:
                     "personal information" : convert_you_to_other(scientists[agent_index].sys_prompt)
                 }), role_name="User")
                 # set_parsers(agent, Prompts.scientist_invite_parser)
-                pattern = re.compile(r'action\s*1', re.IGNORECASE)
+                pattern = re.compile(r'1', re.IGNORECASE)
                 # action1 means a scientist accepts the invitance
                 x = agent.step(hint).msg
                 if pattern.search(extract_between_json_tags(x.content, num=1)):
@@ -321,27 +327,45 @@ class Platform:
             paper_reference = paper_reference+"Title: "+paper_index['title']+"\n"
             paper_reference = paper_reference+"Abstract: "+paper_index['abstract']+"}"+"\n"
         return paper_reference, I[0]
+    
+    def reference_author(self, key_string, cite_number):
+        query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
+        query_vector = np.array([query_vector['embedding']])
+        D, I = self.gpu_authors_index.search(query_vector, cite_number)
+
+        author_use = []
+        for id in range(len(I[0])):
+            author = self.author_dicts[I[0][id]]
+            author_index = process_author_text(author)
+            author_use.append(author_index)
+        author_reference = ""
+        for id in range(len(author_use)):
+            author_index = author_use[id]
+            author_reference = author_reference+author_index+"\n"
+        return author_reference
 
     def running(self, epochs):
         # init team_pool
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
         self.team_pool = self.select_coauthors()
         for epoch in range(epochs):
-            # state 6 is an over
-            # 1. generate paper review for state 6
-            # 2. generate paper abstract for state 5
-            # 3. generate idea for state 4
-            # 4. check novelty for state 3
-            # 5. select topics for state 2
-            # 6. select coauthors for state 1
+            # state 7 is an over
+            # 1. select coauthors for state 1
+            # 2. select topics for state 2
+            # 3. generate idea for state 3
+            # 4. check novelty for state 4
+            # 5. generate paper abstract for state 5
+            # 6. generate paper review for state 6
 
             for leader_index in range(len(self.team_pool)):
                 for team_index in range(len(self.team_pool[leader_index])):
                     self.team_pool[leader_index][team_index].epoch = epoch
                     self.team_pool[leader_index][team_index].action_excution(self)
-                    if self.team_pool[leader_index][team_index].state == 7:
+                    if self.team_pool[leader_index][team_index].state == self.over_state:
                         self.team_pool[leader_index][team_index].save_team_info()
 
             print(f'{"="*50} Epoch:{epoch} | Begin Select Authors {"="*50}')
             self.team_pool = self.select_coauthors()
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
+        output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database.db"
+        save2database(self.paper_dicts, output_dir)

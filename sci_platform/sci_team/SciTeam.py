@@ -240,9 +240,12 @@ class Team:
             self.log_dialogue(self.teammate[0], topic.content)
             self.topic = extract_between_json_tags(topic.content, num=1)
             self.topic = strip_non_letters(self.topic.split("Topic")[1])
-
-        # update dialogue history
-        previous_memories.append(last_turn_summarization)
+            # update dialogue history
+            previous_memories.append(last_turn_summarization)
+            previous_memories.append("Final selected topic: "+self.topic)
+        else:
+            # update dialogue history
+            previous_memories.append(last_turn_summarization)
         # summarize dialogue history
         dialogue_summarization_prompt = 'Briefly summarize "Summarizations of previous turns".' + \
                                         self.format_memories(None, previous_memories, team_memories)
@@ -291,7 +294,7 @@ class Team:
                 cite_paper = list(set(cite_paper).union(cite_paper_new))
 
                 # find the metric
-                split_keywords = ['Interestingness', 'Feasibility', 'Novelty']
+                split_keywords = ['Clarity', 'Feasibility', 'Novelty']
                 metrics = extract_metrics(old_idea, split_keywords)
                 if best_idea != None:
                     if old_idea == best_idea:
@@ -322,7 +325,7 @@ class Team:
                 for split_keyword in split_keywords:
                     if metrics[split_keyword]==None:
                         break
-                    if metrics[split_keyword]<11:
+                    if metrics[split_keyword]<10:
                         idea_judge=False
                         break
                 if idea_judge:
@@ -450,20 +453,20 @@ class Team:
         query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=Abstract)
         query_vector = np.array([query_vector['embedding']])
 
-        D_future, I_future = platform.gpu_future_index.search(query_vector, int(platform.cite_number/2))
+        # D_future, I_future = platform.gpu_future_index.search(query_vector, int(platform.cite_number/2))
         D, I = platform.gpu_index.search(query_vector, int(platform.cite_number/2))
 
-        for id in range(len(I_future[0])):
-            paper_title = platform.paper_future_dicts[I_future[0][id]]['title']
-            paper_abstract = platform.paper_future_dicts[I_future[0][id]]['abstract']
-            paper_year = platform.paper_future_dicts[I_future[0][id]]['year']
-            paper_citation = platform.paper_future_dicts[I_future[0][id]]['citation']
-            paper_index = {}
-            paper_index['title'] = paper_title
-            paper_index['abstract'] = paper_abstract
-            paper_index['year'] = paper_year
-            paper_index['citation'] = paper_citation
-            related_papers.append(paper_index)
+        # for id in range(len(I_future[0])):
+        #     paper_title = platform.paper_future_dicts[I_future[0][id]]['title']
+        #     paper_abstract = platform.paper_future_dicts[I_future[0][id]]['abstract']
+        #     paper_year = platform.paper_future_dicts[I_future[0][id]]['year']
+        #     paper_citation = platform.paper_future_dicts[I_future[0][id]]['citation']
+        #     paper_index = {}
+        #     paper_index['title'] = paper_title
+        #     paper_index['abstract'] = paper_abstract
+        #     paper_index['year'] = paper_year
+        #     paper_index['citation'] = paper_citation
+        #     related_papers.append(paper_index)
 
         for id in range(len(I[0])):
             paper_title = platform.paper_dicts[I[0][id]]['title']
@@ -492,7 +495,7 @@ class Team:
         self.log_dialogue('embedding similarity', str(sim))
 
         self.log_dialogue('faiss_distance', str(D))
-        self.log_dialogue('faiss_distance_future', str(D_future))
+        # self.log_dialogue('faiss_distance_future', str(D_future))
 
         # eval with LLM
         print('related papers:')
@@ -520,7 +523,7 @@ class Team:
             metric = extract_metrics(comparison, split_keywords=split_keywords)
             abstract_use = True
             for split_keyword in split_keywords:
-                if metric[split_keyword]>=70:
+                if metric[split_keyword]>=90:
                     abstract_use = False
                     self.abstract = old_abstract
                     break
@@ -528,24 +531,24 @@ class Team:
             print('Final Abstract:')
             print(self.abstract)
             # stop early
-            self.state=7
+            # self.state=7
 
             # do not stop early
 
-            # if abstract_use:
-            #     team.state=6
-            #     team.self_review=None
-            # # if the abstract is too similar one time, go to revise, otherwise back to generate idea
-            # else:
-            #     if team.self_review!=None:
-            #         team.state=3
-            #         team.idea = None
-            #         team.abstract = None
-            #         team.citation_id = None
-            #         team.self_review = None
-            #         team.paper_review = None
-            #     else:
-            #         team.self_review = reply.content
+            if abstract_use:
+                self.state=6
+                self.self_review=None
+            # if the abstract is too similar one time, go to revise, otherwise back to generate idea
+            else:
+                if self.self_review!=None:
+                    self.state=3
+                    self.idea = None
+                    self.abstract = None
+                    self.citation_id = None
+                    self.self_review = None
+                    self.paper_review = None
+                else:
+                    self.self_review = reply.content
 
         else:
             print('Check Fail!!!!!!')
@@ -586,6 +589,8 @@ class Team:
             file_dict={}
             file_dict['title']=title
             file_dict['abstract']=abstract
+            file_dict['year']=self.epoch
+            file_dict['citation']=-1
             file_dict['id'] = len(platform.paper_dicts)
             file_dict['authors'] = self.teammate
             file_dict['cite_papers'] = self.citation_id
