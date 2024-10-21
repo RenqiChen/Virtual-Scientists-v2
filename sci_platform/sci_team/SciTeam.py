@@ -456,20 +456,20 @@ class Team:
         query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=Abstract)
         query_vector = np.array([query_vector['embedding']])
 
-        # D_future, I_future = platform.gpu_future_index.search(query_vector, int(platform.cite_number/2))
+        D_future, I_future = platform.gpu_future_index.search(query_vector, int(platform.cite_number/2))
         D, I = platform.gpu_index.search(query_vector, int(platform.cite_number/2))
 
-        # for id in range(len(I_future[0])):
-        #     paper_title = platform.paper_future_dicts[I_future[0][id]]['title']
-        #     paper_abstract = platform.paper_future_dicts[I_future[0][id]]['abstract']
-        #     paper_year = platform.paper_future_dicts[I_future[0][id]]['year']
-        #     paper_citation = platform.paper_future_dicts[I_future[0][id]]['citation']
-        #     paper_index = {}
-        #     paper_index['title'] = paper_title
-        #     paper_index['abstract'] = paper_abstract
-        #     paper_index['year'] = paper_year
-        #     paper_index['citation'] = paper_citation
-        #     related_papers.append(paper_index)
+        for id in range(len(I_future[0])):
+            paper_title = platform.paper_future_dicts[I_future[0][id]]['title']
+            paper_abstract = platform.paper_future_dicts[I_future[0][id]]['abstract']
+            paper_year = platform.paper_future_dicts[I_future[0][id]]['year']
+            paper_citation = platform.paper_future_dicts[I_future[0][id]]['citation']
+            paper_index = {}
+            paper_index['title'] = paper_title
+            paper_index['abstract'] = paper_abstract
+            paper_index['year'] = paper_year
+            paper_index['citation'] = paper_citation
+            related_papers.append(paper_index)
 
         for id in range(len(I[0])):
             paper_title = platform.paper_dicts[I[0][id]]['title']
@@ -498,7 +498,7 @@ class Team:
         self.log_dialogue('embedding similarity', str(sim))
 
         self.log_dialogue('faiss_distance', str(D))
-        # self.log_dialogue('faiss_distance_future', str(D_future))
+        self.log_dialogue('faiss_distance_future', str(D_future))
 
         # eval with LLM
         print('related papers:')
@@ -509,11 +509,12 @@ class Team:
         if len(related_papers)>0:
             abstract_check_prompt = Prompts.prompt_abstract_check.replace("[Insert your abstract here]", old_abstract)
             cite_abstract = ""
-            word = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']
+            # word = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']
+            word = ['A', 'B', 'C', 'D']
             split_keywords = []
-            for paper_id in range(len(related_papers)):
-                cite_abstract = cite_abstract + str(paper_id+1) + ". Abstract {}: ".format(word[paper_id]) + "Title: " + related_papers[paper_id]['title'] + "\n" + "Abstract: " + related_papers[paper_id]['abstract'] + "\n"
-                split_keywords.append('Written Abstract vs {}'.format(word[paper_id]))
+            for paper_id in range(int(platform.cite_number/2), len(related_papers)):
+                cite_abstract = cite_abstract + str(paper_id-int(platform.cite_number/2)+1) + ". Abstract {}: ".format(word[paper_id-int(platform.cite_number/2)]) + "Title: " + related_papers[paper_id]['title'] + "\n" + "Abstract: " + related_papers[paper_id]['abstract'] + "\n"
+                split_keywords.append('Written Abstract vs {}'.format(word[paper_id-int(platform.cite_number/2)]))
             abstract_check_prompt = abstract_check_prompt.replace("[Insert ref abstract here]", cite_abstract)
             abstract_check_prompt = abstract_check_prompt + "\n" + Prompts.prompt_response_check
 

@@ -159,13 +159,13 @@ class Platform:
         authors_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_authors_index = faiss.index_cpu_to_gpu(authors_res, 0, cpu_authors_index)  # 将索引移到 GPU
 
-        # cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
-        # future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
-        # self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
+        cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
+        future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
+        self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
         self.author_dicts = read_txt_files_as_list(self.author_folder_path)
-        # self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
+        self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
     def init_reviewer(self, agent_id, model):
         name = 'Paper Reviewer{}'.format(agent_id)
