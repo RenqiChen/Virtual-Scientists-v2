@@ -18,7 +18,7 @@ def parse_arguments():
     parser.add_argument(
         "--agent_num",
         type=int,
-        default=3,
+        default=1,
         help="How many scientist leaders.",
     )
     # how many runs
@@ -44,7 +44,7 @@ def parse_arguments():
     parser.add_argument(
         "--max_team_member",
         type=int,
-        default=4,
+        default=3,
         help="Max team mamber of a team, actual team size is max_team_member.",
     )
     parser.add_argument(

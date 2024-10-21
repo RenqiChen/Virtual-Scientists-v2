@@ -26,7 +26,8 @@ from utils.scientist_utils import (
     count_team,
     top_three_indices,
     extract_first_number,
-    most_frequent_element
+    most_frequent_element,
+    Color
 )
 
 class Team:
@@ -206,6 +207,7 @@ class Team:
                 output['last_turn_history'] = current_memories
                 break
             else:
+                print(turn_summarization)
                 previous_memories.append(turn_summarization)
 
         output['previous_memories'] = previous_memories
@@ -225,7 +227,7 @@ class Team:
         format_answer_prompt = BaseMessage.make_user_message(role_name="user", content=answer_prompt)
 
         answer = platform.id2agent[self.teammate[0]].step(format_answer_prompt).msg
-        self.log_dialogue('user', answer_prompt)
+        # self.log_dialogue('user', answer_prompt)
         self.log_dialogue(platform.id2agent[self.teammate[0]].role_name, answer.content)
         answer_pattern = re.compile(r'action\s*1', re.IGNORECASE)
 
@@ -242,7 +244,8 @@ class Team:
             self.topic = strip_non_letters(self.topic.split("Topic")[1])
             # update dialogue history
             previous_memories.append(last_turn_summarization)
-            previous_memories.append("Final selected topic: "+self.topic)
+            topic_message = BaseMessage.make_user_message(role_name="user", content="Final selected topic: "+self.topic)
+            previous_memories.append(topic_message)
         else:
             # update dialogue history
             previous_memories.append(last_turn_summarization)
@@ -281,7 +284,7 @@ class Team:
 
                 format_idea_prompt = BaseMessage.make_user_message(role_name="user", content=idea_prompt)
                 reply = agent.step(format_idea_prompt).msg
-                self.log_dialogue('user', idea_prompt)
+                # self.log_dialogue('user', idea_prompt)
                 self.log_dialogue(agent.role_name, reply.content)
                 old_idea = extract_between_json_tags(reply.content, num=1)
                 if "Title" in old_idea:
@@ -387,7 +390,7 @@ class Team:
                                       Prompts.prompt_idea_check_response.replace("{existing_idea}", idea_choices).replace("{last_query_results}", paper_reference)
                 format_idea_novelty_prompt = BaseMessage.make_user_message(role_name="user", content=idea_novelty_prompt)
                 reply = agent.step(format_idea_novelty_prompt).msg
-                self.log_dialogue('user', idea_novelty_prompt)
+                # self.log_dialogue('user', idea_novelty_prompt)
                 self.log_dialogue(agent.role_name, reply.content)
                 old_idea = extract_between_json_tags(reply.content, num=1)
                 idea_choice = extract_first_number(old_idea)
@@ -567,7 +570,7 @@ class Team:
         self.paper_review == None
         for _ in range(platform.reviewer_num):
             format_review_prompt = BaseMessage.make_user_message(role_name="user", content=review_prompt)
-            reply = platform.reviewer_pool[_].step(format_review_prompt)
+            reply = platform.reviewer_pool[_].step(format_review_prompt).msg
             self.log_dialogue(platform.reviewer_pool[_].role_name, reply.content)
             split_keywords = ['Overall']
             metric = extract_metrics(reply.content, split_keywords)
@@ -605,7 +608,10 @@ class Team:
             self.state = 5
 
     def log_dialogue(self, name, content):
-        print(f'{name}: {content}')
+        color = Color.GREEN
+        name_after = f"{color}{name}{Color.RESET}"
+        print(f'{name_after}: {content}')
+        print(f'-'*30)
         self.logger.info(f'{"="*50} Epoch:{self.epoch} | {self.state_log[self.state]} | {name} {"="*50}\n{content}')
         # self.logger.info(f'{"="*100}')
 

@@ -3,20 +3,20 @@ from camel.messages import BaseMessage
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
 
-# model = ModelFactory.create(
-#     model_platform=ModelPlatformType.OLLAMA,
-#     model_type="llama3.1",
-#     url="http://127.0.0.1:11434/v1",
-#     model_config_dict={"temperature": 0.4},
-# )
-
 model = ModelFactory.create(
-    model_platform=ModelPlatformType.INTERN,
-    model_type = ModelType.INTERN_VL,
-    api_key="sk-gaqeyxvrpmjondtmihuydxjevoztjgibkfmfqyhgmonhfsml",
-    url="https://api.siliconflow.cn/v1",
+    model_platform=ModelPlatformType.OLLAMA,
+    model_type="llama3.1",
+    url="http://127.0.0.1:11434/v1",
     model_config_dict={"temperature": 0.4},
 )
+
+# model = ModelFactory.create(
+#     model_platform=ModelPlatformType.INTERN,
+#     model_type = ModelType.INTERN_VL, # enum type class, value for model name
+#     api_key="sk-vgtwqiedawdmdzckjxlfkrurxovcitprueethwihzilszbku",
+#     url="https://api.siliconflow.cn/v1",
+#     model_config_dict={"temperature": 0.4},
+# )
 
 assistant_sys_msg0 = BaseMessage.make_assistant_message(
     role_name="Scientist0",
@@ -36,7 +36,7 @@ user_msg = BaseMessage.make_user_message(
 )
 
 msg = user_msg
-for i in range(2):
+for i in range(1):
     msg = agent0.step(msg)
     print(msg.msg.content)
     print('+'*100)

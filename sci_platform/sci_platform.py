@@ -164,7 +164,7 @@ class Platform:
         # self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
-        self.author_dicts = read_txt_files_as_dict(self.author_folder_path)
+        self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         # self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
     def init_reviewer(self, agent_id, model):
@@ -207,7 +207,7 @@ class Platform:
             x = scientists[agent_index].step(hint).msg
             team_list[agent_index][0].log_dialogue('user', hint.content)
             team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, x.content)
-            match = re.search(r'action\s*(\d+)', x.content, re.IGNORECASE)
+            match = re.search(r'(\d+)', x.content, re.IGNORECASE)
 
             # when action2, the agent choose to act independently
             if int(match.group(1))==2:
@@ -229,7 +229,7 @@ class Platform:
             for i in range(len(selected_indices)):
                 team_candidate.append(f"Scientist{selected_indices[i]}")
 
-            print(team_candidate)
+            # print(team_candidate)
             team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, ','.join(team_candidate))
             is_contained = False
             for agent_list in team_list:
@@ -288,9 +288,10 @@ class Platform:
                         self.adjacency_matrix[agent_index, int(member[9:])]=self.adjacency_matrix[agent_index, int(member[9:])]+0.2
                         self.adjacency_matrix[int(member[9:]), agent_index]=self.adjacency_matrix[int(member[9:]), agent_index]+0.2
                 # summary current teams in memory
-                scientists[agent_index].step(BaseMessage.make_user_message(
+                summary_select = scientists[agent_index].step(BaseMessage.make_user_message(
                     content=team_description_detail(team_list[agent_index], self.agent_pool, self.over_state),
                     role_name="User"))
+                team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, summary_select.msg.content)
             else:
                 continue
         return team_list

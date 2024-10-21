@@ -123,7 +123,11 @@ class OllamaModel:
                 `ChatCompletion` in the non-stream mode, or
                 `Stream[ChatCompletionChunk]` in the stream mode.
         """
-
+        # print('before')
+        # print(messages)
+        # messages = [{"role": "user", "content": msg['content']} for msg in messages]
+        # print('after')
+        # print(messages)
         response = self._client.chat.completions.create(
             messages=messages,
             model=self.model_type,

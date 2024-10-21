@@ -94,9 +94,13 @@ class InternModel(BaseModelBackend):
                 `Stream[ChatCompletionChunk]` in the stream mode.
         """
         intern_input = [{"role": "user", "content": [{"type": "text", "text": msg['content']}]} for msg in messages]
-
+        print('before')
+        print(messages)
+        messages = [{"role": "user", "content": msg['content']} for msg in messages]
+        print('after')
+        print(messages)
         response = self._client.chat.completions.create(
-            messages=intern_input,
+            messages=messages,
             model=self.model_type.value,
             **self.model_config_dict,
         )

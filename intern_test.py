@@ -2,7 +2,7 @@ import json
 from openai import OpenAI
 
 client = OpenAI(
-    api_key="sk-gaqeyxvrpmjondtmihuydxjevoztjgibkfmfqyhgmonhfsml", # 从https://cloud.siliconflow.cn/account/ak获取
+    api_key="sk-vgtwqiedawdmdzckjxlfkrurxovcitprueethwihzilszbku", # 从https://cloud.siliconflow.cn/account/ak获取
     base_url="https://api.siliconflow.cn/v1",
     timeout=60,
     max_retries=3,
@@ -36,7 +36,18 @@ response = client.chat.completions.create(
         }],
     stream=False
 )
-
-for chunk in response:
-    chunk_message = chunk.choices[0].delta.content
-    print(chunk_message, end='', flush=True)
+# response = client.chat.completions.create(
+#     model="OpenGVLab/InternVL2-26B",
+#     messages=[
+#         {
+#             "role": "user",
+#             "content": "You are a helpful assistant."
+#         }],
+#     stream=False
+# )
+# print(response.choices[0].message.content)
+print(response)
+# for chunk in response:
+#     print(chunk)
+#     chunk_message = chunk.choices[0].delta.content
+#     print(chunk_message, end='', flush=True)
