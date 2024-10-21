@@ -431,6 +431,7 @@ class SciAgent(BaseAgent):
             self,
             input_message: BaseMessage,
             output_schema: Optional[Type[BaseModel]] = None,
+            use_memory: bool = False
     ) -> ChatAgentResponse:
         r"""Performs a single step in the chat session by generating a response
         to the input message.
@@ -452,6 +453,9 @@ class SciAgent(BaseAgent):
                 a boolean indicating whether the chat session has terminated,
                 and information about the chat session.
         """
+        if not use_memory:
+            self.memory.clear()
+
         if (
                 isinstance(self.model_type, ModelType)
                 and "lama" in self.model_type.value
