@@ -229,7 +229,7 @@ class Team:
         answer = platform.id2agent[self.teammate[0]].step(format_answer_prompt).msg
         # self.log_dialogue('user', answer_prompt)
         self.log_dialogue(platform.id2agent[self.teammate[0]].role_name, answer.content)
-        answer_pattern = re.compile(r'action\s*1', re.IGNORECASE)
+        answer_pattern = re.compile(r'1', re.IGNORECASE)
 
         # check whether agent is ready to answer
         if answer_pattern.search(answer.content) or len(team_memories)>=1:

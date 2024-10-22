@@ -138,12 +138,13 @@ class Prompts:
 
     prompt_idea_check = """You are an ambitious scientist who is looking to publish a paper that will contribute significantly to the field. 
     Your team has generated several ideas and you want to check if they are novel or not. I.e., not overlapping significantly with existing literature or already well explored. 
-    Be a harsh critic for novelty, ensure there is a sufficient contribution in the idea for a new conference or workshop paper. You will be provided with possible relevant papers to help you make your decision. 
-    Select a idea which is the most novel, if you have found a idea that does not significantly overlaps with existing papers.
+    Be a harsh critic for novelty, ensure there is a sufficient contribution in the idea for a new conference or workshop paper. You will be provided with relevant papers to help you make your decision. 
+    Select a idea which is the most novel, if you have found a idea that does not significantly overlaps with these provided relevant papers. 
+    As a reminder, the idea you choose should be the most distinct from the provided relevant papers.
     """
     
     prompt_idea_check_response = """Your team generated these ideas: {existing_idea}.
-    The possible related papers are {last_query_results}.
+    The relevant papers are {last_query_results}.
     Respond in the following format: 
     THOUGHT: 
     <THOUGHT>

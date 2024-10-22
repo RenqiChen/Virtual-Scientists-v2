@@ -18,7 +18,7 @@ def parse_arguments():
     parser.add_argument(
         "--agent_num",
         type=int,
-        default=1,
+        default=2,
         help="How many scientist leaders.",
     )
     # how many runs
@@ -32,7 +32,7 @@ def parse_arguments():
     parser.add_argument(
         "--team_limit",
         type=int,
-        default=2,
+        default=3,
         help="Max number of teams for a scientist.",
     )
     parser.add_argument(
@@ -69,6 +69,7 @@ if __name__ == '__main__':
     while end==False:
         print(f'{len(os.listdir(args.save_dir))} files are created...')
         platform_example = Platform(
+            agent_num=args.agent_num,
             team_limit = args.team_limit,
             group_max_discuss_iteration = args.max_discuss_iteration,
             max_teammember = args.max_team_member-1,
