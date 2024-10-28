@@ -10,6 +10,13 @@ model = ModelFactory.create(
     model_config_dict={"temperature": 0.4},
 )
 
+model_2 = ModelFactory.create(
+    model_platform=ModelPlatformType.OLLAMA,
+    model_type="llama3.1",
+    url="http://127.0.0.1:11434/v1",
+    model_config_dict={"temperature": 0.4},
+)
+
 # model = ModelFactory.create(
 #     model_platform=ModelPlatformType.INTERN,
 #     model_type = ModelType.INTERN_VL, # enum type class, value for model name
@@ -29,7 +36,7 @@ assistant_sys_msg1 = BaseMessage.make_assistant_message(
     role_name="Scientist1",
     content="You are Scientist1, you have questions about protein to ask Scientist0. Directly say what you want to say.",
 )
-agent1 = SciAgent(assistant_sys_msg1, model=model, token_limit=4096, message_window_size = 1)
+agent1 = SciAgent(assistant_sys_msg1, model=model_2, token_limit=4096, message_window_size = 1)
 
 user_msg = BaseMessage.make_user_message(
     role_name="user", content=""
