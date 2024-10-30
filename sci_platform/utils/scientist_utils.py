@@ -400,7 +400,8 @@ def save2database(paper_list : list[dict], output_dir : str):
 
         # Execute the query with user data
         cursor.execute(query, paper_data)
-
+    
+    print('build paper table successfully...')
     conn.commit()
     cursor.close()
     conn.close()

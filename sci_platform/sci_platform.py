@@ -6,12 +6,15 @@ import re
 import ollama
 from functools import partial
 import faiss
+from typing import Any
 
 sys.path.append('../camel-master')
 from camel.agents import SciAgent
 from camel.messages import BaseMessage
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
+from social_agent.channel import Channel
+from social_agent.sci_agent import SciAgent_Async
 
 from sci_team.SciTeam import Team
 from utils.prompt import Prompts
@@ -26,6 +29,10 @@ from utils.scientist_utils import (
     read_txt_files_as_list,
     process_author_text
 )
+
+import asyncio
+from inference.inference_manager import InferencerManager
+from social_agent.channel import Channel
 
 class Platform:
     r"""Platform."""
@@ -55,7 +62,8 @@ class Platform:
                  default_mark: int = 4,
                  skip_check: bool = False,
                  over_state: int = 7,
-                 begin_state: int = 1
+                 begin_state: int = 1,
+                 inference_configs: dict[str, Any] | None = None,
                  ):
         self.agent_num = agent_num
         self.paper_folder_path = paper_folder_path
@@ -120,6 +128,38 @@ class Platform:
             model_config_dict={"temperature": 0.4},
         )
 
+        inference_channel = Channel()
+        inference_channel_reviewer = Channel()
+        inference_configs = {
+            'model_type': "llama3.1",
+            'model_path': 'API',
+            'stop_tokens': None,
+            'server_url': [
+                {
+                'host': '127.0.0.1',
+                'ports': [11434,11435,11436]
+                }
+          ]
+        }
+        inference_reviewer_configs = {
+            'model_type': "llama3.1",
+            'model_path': 'API',
+            'stop_tokens': None,
+            'server_url': [
+                {
+                'host': '127.0.0.1',
+                'ports': [11434,11435,11436]
+                }
+          ]
+        }
+        self.infere = InferencerManager(
+            inference_channel,
+            **inference_configs,
+        )
+        self.infere_reviewer = InferencerManager(
+            inference_channel_reviewer,
+            **inference_reviewer_configs,
+        )
         # model = ModelFactory.create(
         #     model_platform=ModelPlatformType.INTERN,
         #     model_type = ModelType.INTERN_VL,
@@ -129,8 +169,10 @@ class Platform:
         # )
 
         # init agent pool
-        self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
-        self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
+        # self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
+        self.agent_pool = self.init_agent_async(model, inference_channel, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt', len(self.adjacency_matrix))
+        # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
+        self.reviewer_pool = self.init_reviewer_async(model, inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
         for agent in self.agent_pool:
             self.id2agent[agent.role_name] = agent
@@ -175,6 +217,19 @@ class Platform:
         )
         agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
+    
+    def init_reviewer_async(self, model, channel, count):
+        agents=[]
+        inference_channel=channel
+        for i in range(count):
+            name = 'Paper Reviewer{}'.format(i)
+            prompt = BaseMessage.make_assistant_message(
+                role_name=name,
+                content=f'You are {name}. ' + Prompts.prompt_review_system,
+            )
+            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, token_limit=4096)
+            agents.append(agent)
+        return agents
 
     def init_agent(self, agent_id, model, information_path):
         # load author info
@@ -188,8 +243,27 @@ class Platform:
         agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
         return agent
+    
+    def init_agent_async(self, model, channel, information_path, count):
+        agents = []
+        inference_channel = channel
 
-    def select_coauthors(self,):
+        # 创建并注册用户
+        for i in range(count):
+            information_path = information_path.format(i)
+            with open(information_path, 'r') as file:
+                prompt = file.read()
+            name = 'Scientist{}'.format(i)
+            prompt = BaseMessage.make_assistant_message(
+                role_name=name,
+                content=prompt,
+            )
+            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+            agents.append(agent)
+
+        return agents
+
+    async def select_coauthors(self,):
         team_list = self.team_pool
         scientists = self.agent_pool[:self.agent_num]
         # decide whether the scientist wants to find partners
@@ -204,7 +278,8 @@ class Platform:
                                                "All_team": team_description(team_list[agent_index],
                                                                             self.over_state)})
                                           )
-            x = scientists[agent_index].step(hint).msg
+            x = await scientists[agent_index].step(hint)
+            x= x.msg
             team_list[agent_index][0].log_dialogue('user', hint.content)
             team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, x.content)
             match = re.search(r'(\d+)', x.content, re.IGNORECASE)
@@ -258,7 +333,8 @@ class Platform:
                 # set_parsers(agent, Prompts.scientist_invite_parser)
                 pattern = re.compile(r'1', re.IGNORECASE)
                 # action1 means a scientist accepts the invitance
-                x = agent.step(hint).msg
+                x = await agent.step(hint)
+                x = x.msg
                 if pattern.search(extract_between_json_tags(x.content, num=1)):
                     team_index.append(agent.role_name)
                 team_list[agent_index][0].log_dialogue('user', hint.content)
@@ -288,7 +364,7 @@ class Platform:
                         self.adjacency_matrix[agent_index, int(member[9:])]=self.adjacency_matrix[agent_index, int(member[9:])]+0.2
                         self.adjacency_matrix[int(member[9:]), agent_index]=self.adjacency_matrix[int(member[9:]), agent_index]+0.2
                 # summary current teams in memory
-                summary_select = scientists[agent_index].step(BaseMessage.make_user_message(
+                summary_select = await scientists[agent_index].step(BaseMessage.make_user_message(
                     content=team_description_detail(team_list[agent_index], self.agent_pool, self.over_state),
                     role_name="User"))
                 team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, summary_select.msg.content)
@@ -345,10 +421,20 @@ class Platform:
             author_reference = author_reference+author_index+"\n"
         return author_reference
 
-    def running(self, epochs):
+    async def team_running(self, epoch, leader_index):
+        for team_index in range(len(self.team_pool[leader_index])):
+            self.team_pool[leader_index][team_index].epoch = epoch
+            await self.team_pool[leader_index][team_index].action_excution(self)
+            if self.team_pool[leader_index][team_index].state == self.over_state:
+                self.team_pool[leader_index][team_index].save_team_info()
+
+    async def running(self, epochs):
+        # 创建调度任务
+        self.inference_task = asyncio.create_task(self.infere.run())
+        self.inference_task_reviewer = asyncio.create_task(self.infere_reviewer.run())
         # init team_pool
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
-        self.team_pool = self.select_coauthors()
+        self.team_pool = await self.select_coauthors()
         for epoch in range(epochs):
             # state 7 is an over
             # 1. select coauthors for state 1
@@ -357,16 +443,18 @@ class Platform:
             # 4. check novelty for state 4
             # 5. generate paper abstract for state 5
             # 6. generate paper review for state 6
-
+            leader_tasks = []
             for leader_index in range(len(self.team_pool)):
-                for team_index in range(len(self.team_pool[leader_index])):
-                    self.team_pool[leader_index][team_index].epoch = epoch
-                    self.team_pool[leader_index][team_index].action_excution(self)
-                    if self.team_pool[leader_index][team_index].state == self.over_state:
-                        self.team_pool[leader_index][team_index].save_team_info()
+                leader_tasks.append(self.team_running(epoch, leader_index))
+
+            await asyncio.gather(*leader_tasks)  # 并行执行所有任务
 
             print(f'{"="*50} Epoch:{epoch} | Begin Select Authors {"="*50}')
-            self.team_pool = self.select_coauthors()
+            self.team_pool = await self.select_coauthors()
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
+        await self.infere.stop()
+        await self.infere_reviewer.stop()
+        await self.inference_task,self.inference_task_reviewer
         output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database.db"
         save2database(self.paper_dicts, output_dir)
+    

@@ -111,17 +111,17 @@ class Team:
 
 
     # execute action based on team state
-    def action_excution(self, platform):
+    async def action_excution(self, platform):
         if self.state in self.state_log.keys():
             print(f'{"="*50} Epoch: {self.epoch} | BEGIN {self.state_log[self.state]} PROCESS {"="*50}')
 
         action = self.state_action.get(self.state, None)
         if action is not None:
-            action(platform)
+            await action(platform)
             # print(f'{"="*50} Epoch: {self.epoch} | FINISH {self.state_log[self.state]} PROCESS {"="*50}')
 
     # general group discussion process
-    def group_discuss(self, platform, prompt: str = None):
+    async def group_discuss(self, platform, prompt: str = None):
         # prompt is used to start and guide the discussion
         # for each turn, in group_discuss, all dialogue history is stored in dialogue_history but not in agent memory
         # after finishing each discussion turn, agent1 will summarize dialogue_history and add a summarization into team_history
@@ -164,7 +164,8 @@ class Team:
                 format_agent_prompt = BaseMessage.make_user_message(role_name="user", content=agent_prompt)
 
                 # add reply to turn_history
-                reply = agent.step(format_agent_prompt).msg
+                reply = await agent.step(format_agent_prompt)
+                reply = reply.msg
                 if reply.content != None and len(reply.content) > 0:
                     self.log_dialogue(agent.role_name, reply.content)
                 involved_scientist = extract_scientist_names(reply.content)
@@ -179,7 +180,8 @@ class Team:
                                                 reply.role_name + ': ' + reply.content + '\n'
                             format_special_guest_prompt = BaseMessage.make_user_message(role_name="user", content=special_guest_prompt)
                             # invite new team member to comment
-                            special_guest_reply = platform.id2agent[scientist_index].step(format_special_guest_prompt).msg
+                            special_guest_reply = await platform.id2agent[scientist_index].step(format_special_guest_prompt)
+                            special_guest_reply = special_guest_reply.msg
                             if special_guest_reply.content is not None:
                                 said.append(scientist_index)
                                 self.teammate.append(scientist_index)
@@ -198,7 +200,8 @@ class Team:
                                         self.format_memories(current_memories, previous_memories, None)
             format_turn_summarization_prompt = BaseMessage.make_user_message(role_name="user", content=turn_summarization_prompt)
 
-            x = teammate[0].step(format_turn_summarization_prompt).msg
+            x = await teammate[0].step(format_turn_summarization_prompt)
+            x = x.msg
             self.log_dialogue(teammate[0].role_name, x.content)
             turn_summarization = BaseMessage.make_user_message(role_name="Summarization of turn{}".format(turn+1), content=x.content)
 
@@ -214,9 +217,9 @@ class Team:
         self.teammate = platform.agent_to_id(teammate)
         return output
 
-    def select_topic(self, platform):
+    async def select_topic(self, platform):
         # prompt to start discussing select_topic
-        discuss_result = self.group_discuss(platform, Prompts.to_start_topic_discussion)
+        discuss_result = await self.group_discuss(platform, Prompts.to_start_topic_discussion)
         team_memories = self.memory
         previous_memories = discuss_result['previous_memories']
         current_memories = discuss_result['last_turn_history']
@@ -226,7 +229,8 @@ class Team:
                         Prompts.to_ask_if_ready_give_topic
         format_answer_prompt = BaseMessage.make_user_message(role_name="user", content=answer_prompt)
 
-        answer = platform.id2agent[self.teammate[0]].step(format_answer_prompt).msg
+        answer = await platform.id2agent[self.teammate[0]].step(format_answer_prompt)
+        answer = answer.msg
         # self.log_dialogue('user', answer_prompt)
         self.log_dialogue(platform.id2agent[self.teammate[0]].role_name, answer.content)
         answer_pattern = re.compile(r'1', re.IGNORECASE)
@@ -238,7 +242,8 @@ class Team:
             topic_prompt = Prompts.to_ask_topic.replace("[history_prompt]", self.format_memories(current_memories, previous_memories, team_memories))
             format_topic_prompt = BaseMessage.make_user_message(role_name="user", content=topic_prompt)
             # answer
-            topic = platform.id2agent[self.teammate[0]].step(format_topic_prompt).msg
+            topic = await platform.id2agent[self.teammate[0]].step(format_topic_prompt)
+            topic = topic.msg
             self.log_dialogue(self.teammate[0], topic.content)
             self.topic = extract_between_json_tags(topic.content, num=1)
             self.topic = strip_non_letters(self.topic.split("Topic")[1])
@@ -253,11 +258,12 @@ class Team:
         dialogue_summarization_prompt = 'Briefly summarize "Summarizations of previous turns".' + \
                                         self.format_memories(None, previous_memories, team_memories)
         format_dialogue_summarization_prompt = BaseMessage.make_user_message(role_name="user", content=dialogue_summarization_prompt)
-        dialogue_summarization = platform.id2agent[self.teammate[0]].step(format_dialogue_summarization_prompt).msg
+        dialogue_summarization = await platform.id2agent[self.teammate[0]].step(format_dialogue_summarization_prompt)
+        dialogue_summarization = dialogue_summarization.msg
         team_memories.append(dialogue_summarization)
         self.memory = team_memories
 
-    def generate_idea(self, platform):
+    async def generate_idea(self, platform):
         topic = self.topic
         old_idea = None
         best_idea = None
@@ -283,7 +289,8 @@ class Team:
                               Prompts.prompt_response
 
                 format_idea_prompt = BaseMessage.make_user_message(role_name="user", content=idea_prompt)
-                reply = agent.step(format_idea_prompt).msg
+                reply = await agent.step(format_idea_prompt)
+                reply = reply.msg
                 # self.log_dialogue('user', idea_prompt)
                 self.log_dialogue(agent.role_name, reply.content)
                 old_idea = extract_between_json_tags(reply.content, num=1)
@@ -293,7 +300,11 @@ class Team:
                 else:
                     idea_key = old_idea.split("Idea")[1]
                     idea_key = strip_non_letters(idea_key.split("Experiment")[0])
-                paper_reference, cite_paper_new = platform.reference_paper(idea_key, platform.cite_number)
+                if len(idea_key)>=3:
+                    paper_reference, cite_paper_new = platform.reference_paper(idea_key, platform.cite_number)
+                else:
+                    paper_reference=''
+                    cite_paper_new=[]
                 cite_paper = list(set(cite_paper).union(cite_paper_new))
 
                 # find the metric
@@ -352,7 +363,7 @@ class Team:
         self.citation_id = cite_paper
         print(len(self.citation_id))
 
-    def check_novelty(self, platform):
+    async def check_novelty(self, platform):
         existing_idea = self.idea
         idea_choices = ""
         for idea_index in range(len(existing_idea)):
@@ -360,13 +371,19 @@ class Team:
             idea_choices = idea_choices+"Idea "+str(idea_index)+":\n"+idea+"\n"
         related_papers = []
         for idea_index in existing_idea:
-            title = idea_index.split("Title")[1]
-            title = strip_non_letters(title.split("Experiment")[0])
+            try:
+                title = idea_index.split("Title")[1]
+                title = strip_non_letters(title.split("Experiment")[0])
+            except:
+                title = idea_index[:100]
             if len(existing_idea)==3:
                 cite_number = 3
             else:
                 cite_number = 5
-            _, related_paper = platform.reference_paper(title, cite_number)
+            if len(title)<5:
+                related_paper=[]
+            else:
+                _, related_paper = platform.reference_paper(title, cite_number)
 
             related_papers = list(set(related_papers).union(related_paper))
 
@@ -389,7 +406,8 @@ class Team:
                 idea_novelty_prompt = Prompts.prompt_idea_check + \
                                       Prompts.prompt_idea_check_response.replace("{existing_idea}", idea_choices).replace("{last_query_results}", paper_reference)
                 format_idea_novelty_prompt = BaseMessage.make_user_message(role_name="user", content=idea_novelty_prompt)
-                reply = agent.step(format_idea_novelty_prompt).msg
+                reply = await agent.step(format_idea_novelty_prompt)
+                reply = reply.msg
                 # self.log_dialogue('user', idea_novelty_prompt)
                 self.log_dialogue(agent.role_name, reply.content)
                 old_idea = extract_between_json_tags(reply.content, num=1)
@@ -409,7 +427,7 @@ class Team:
         print(self.idea)
         self.state=5
 
-    def generate_abstract(self, platform):
+    async def generate_abstract(self, platform):
         idea = self.idea
         old_abstract = self.abstract
         teammate = platform.id_to_agent(self.teammate)
@@ -421,7 +439,7 @@ class Team:
 
         for turn in range(group_max_discuss_iteration):
             # discuss the abstract
-            for agent in teammate:
+            for agent_id in range(len(teammate)):
                 if old_abstract == None:
                     abstract_prompt = Prompts.prompt_abstract+"\n"+\
                                       idea+"\n"+\
@@ -444,11 +462,16 @@ class Team:
                         abstract_prompt = prompt_abstract_judgement+Prompts.prompt_abstract_revise_response
 
                 format_abstract_prompt = BaseMessage.make_user_message(role_name="user", content=abstract_prompt)
-                reply = agent.step(format_abstract_prompt).msg
-                self.log_dialogue(agent.role_name, reply.content)
+                reply = await teammate[agent_id].step(format_abstract_prompt)
+                reply = reply.msg
+                self.log_dialogue(teammate[agent_id].role_name, reply.content)
+                old_old_abstract = old_abstract
                 old_abstract = extract_between_json_tags(reply.content, num=1)
                 if old_abstract == None:
-                    old_abstract = reply.content
+                    if agent_id!=0:
+                        old_abstract=old_old_abstract
+                    else:
+                        old_abstract = reply.content
 
         related_papers = []
 
@@ -519,7 +542,8 @@ class Team:
             abstract_check_prompt = abstract_check_prompt + "\n" + Prompts.prompt_response_check
 
             format_abstract_check_prompt = BaseMessage.make_user_message(role_name="user", content=abstract_check_prompt)
-            reply = teammate[0].step(format_abstract_check_prompt).msg
+            reply = await teammate[0].step(format_abstract_check_prompt)
+            reply = reply.msg
             self.log_dialogue(teammate[0].role_name, reply.content)
             print("abstract_check:")
             print(split_keywords)
@@ -562,7 +586,7 @@ class Team:
                 print(self.abstract)
                 self.state=6
 
-    def generate_review(self, platform):
+    async def generate_review(self, platform):
         # paper reviewer by reviewer
         print('current reviewing paper from {}'.format(self.teammate))
         old_abstract = self.abstract
@@ -571,7 +595,8 @@ class Team:
         self.paper_review == None
         for _ in range(platform.reviewer_num):
             format_review_prompt = BaseMessage.make_user_message(role_name="user", content=review_prompt)
-            reply = platform.reviewer_pool[_].step(format_review_prompt).msg
+            reply = await platform.reviewer_pool[_].step(format_review_prompt)
+            reply = reply.msg
             self.log_dialogue(platform.reviewer_pool[_].role_name, reply.content)
             split_keywords = ['Overall']
             metric = extract_metrics(reply.content, split_keywords)

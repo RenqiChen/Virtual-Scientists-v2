@@ -2,6 +2,7 @@ from sci_platform import Platform
 from utils.scientist_utils import read_txt_files_as_dict
 import os
 import argparse
+import asyncio
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Run experiments")
     # parser.add_argument(
@@ -32,7 +33,7 @@ def parse_arguments():
     parser.add_argument(
         "--team_limit",
         type=int,
-        default=3,
+        default=2,
         help="Max number of teams for a scientist.",
     )
     parser.add_argument(
@@ -76,7 +77,7 @@ if __name__ == '__main__':
             log_dir = args.log_dir,
             info_dir = args.save_dir
         )
-        platform_example.running(args.epochs)
+        asyncio.run(platform_example.running(args.epochs))
         # try:
         #     platform_example = Platform(
         #         team_limit = args.team_limit,
