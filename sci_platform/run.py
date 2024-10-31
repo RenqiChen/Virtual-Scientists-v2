@@ -22,6 +22,12 @@ def parse_arguments():
         default=2,
         help="How many scientist leaders.",
     )
+    parser.add_argument(
+        "--port",
+        type=list,
+        default=[11434,11435,11436],
+        help="How many ports are used"
+    )
     # how many runs
     parser.add_argument(
         "--runs",
@@ -71,6 +77,7 @@ if __name__ == '__main__':
         print(f'{len(os.listdir(args.save_dir))} files are created...')
         platform_example = Platform(
             agent_num=args.agent_num,
+            port=args.port,
             team_limit = args.team_limit,
             group_max_discuss_iteration = args.max_discuss_iteration,
             max_teammember = args.max_team_member-1,

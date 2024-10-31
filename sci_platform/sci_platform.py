@@ -40,6 +40,7 @@ class Platform:
     def __init__(self,
                  model_configuration: str = './configs/model_configs.json',
                  agent_num: int = 1,
+                 port: list = [11434],
                  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
                  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
                  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers",
@@ -66,6 +67,7 @@ class Platform:
                  inference_configs: dict[str, Any] | None = None,
                  ):
         self.agent_num = agent_num
+        self.port = port
         self.paper_folder_path = paper_folder_path
         self.paper_future_folder_path = future_paper_folder_path
         self.author_info_dir = os.path.join(root_dir, author_info_dir)
@@ -137,7 +139,7 @@ class Platform:
             'server_url': [
                 {
                 'host': '127.0.0.1',
-                'ports': [11434,11435,11436]
+                'ports': self.port
                 }
           ]
         }
@@ -148,7 +150,7 @@ class Platform:
             'server_url': [
                 {
                 'host': '127.0.0.1',
-                'ports': [11434,11435,11436]
+                'ports': self.port
                 }
           ]
         }
