@@ -32,7 +32,7 @@ def parse_arguments():
     parser.add_argument(
         "--runs",
         type=int,
-        default=1,
+        default=10,
         help="Calculate average on how many runs.",
     )
     # team limit
@@ -96,7 +96,7 @@ if __name__ == '__main__':
         #     platform_example.running(args.epochs)
         # except:
         #     pass
-        break
+        # break
         if len(os.listdir(args.save_dir)) >= args.team_limit*args.runs:
             end = True
 

@@ -406,11 +406,14 @@ class Team:
                 idea_novelty_prompt = Prompts.prompt_idea_check + \
                                       Prompts.prompt_idea_check_response.replace("{existing_idea}", idea_choices).replace("{last_query_results}", paper_reference)
                 format_idea_novelty_prompt = BaseMessage.make_user_message(role_name="user", content=idea_novelty_prompt)
-                reply = await agent.step(format_idea_novelty_prompt)
-                reply = reply.msg
+                try:
+                    reply = await agent.step(format_idea_novelty_prompt)
+                    reply = reply.msg.content
+                except:
+                    reply = "```No Response```"
                 # self.log_dialogue('user', idea_novelty_prompt)
-                self.log_dialogue(agent.role_name, reply.content)
-                old_idea = extract_between_json_tags(reply.content, num=1)
+                self.log_dialogue(agent.role_name, reply)
+                old_idea = extract_between_json_tags(reply, num=1)
                 idea_choice = extract_first_number(old_idea)
                 if idea_choice == None:
                     idea_choice = 0
@@ -467,7 +470,7 @@ class Team:
                 self.log_dialogue(teammate[agent_id].role_name, reply.content)
                 old_old_abstract = old_abstract
                 old_abstract = extract_between_json_tags(reply.content, num=1)
-                if old_abstract == None:
+                if len(old_abstract.split("Abstract"))<2:
                     if agent_id!=0:
                         old_abstract=old_old_abstract
                     else:
@@ -550,11 +553,16 @@ class Team:
             comparison = extract_between_json_tags(reply.content)
             metric = extract_metrics(comparison, split_keywords=split_keywords)
             abstract_use = True
-            for split_keyword in split_keywords:
-                if metric[split_keyword]>=90:
-                    abstract_use = False
-                    self.abstract = old_abstract
-                    break
+            try:
+                for split_keyword in split_keywords:
+                    if metric[split_keyword]>=90:
+                        abstract_use = False
+                        self.abstract = old_abstract
+                        break
+            except:
+                raise ValueError(
+                f"Error in the generated abstract check: {comparison}"
+                )
             self.abstract = old_abstract
             print('Final Abstract:')
             print(self.abstract)
@@ -612,9 +620,14 @@ class Team:
         if mark_sum>=(5*platform.reviewer_num):
             print('paper accept!!!!!!')
             self.state=platform.over_state
-            title = old_abstract.split("Abstract")[0]
-            title = strip_non_letters(title.split("Title")[1])
-            abstract = strip_non_letters(old_abstract.split("Abstract")[1])
+            try:
+                title = old_abstract.split("Abstract")[0]
+                title = strip_non_letters(title.split("Title")[1])
+                abstract = strip_non_letters(old_abstract.split("Abstract")[1])
+            except:
+                raise ValueError(
+                f"Error in the generated abstract: {old_abstract}"
+                )
             file_dict={}
             file_dict['title']=title
             file_dict['abstract']=abstract

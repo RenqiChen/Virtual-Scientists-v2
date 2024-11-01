@@ -456,6 +456,7 @@ class Platform:
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
         await self.infere.stop()
         await self.infere_reviewer.stop()
+        # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
         await self.inference_task,self.inference_task_reviewer
         output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database.db"
         save2database(self.paper_dicts, output_dir)
