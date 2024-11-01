@@ -90,6 +90,7 @@ def team_description_detail(team: list, agent_list: list, over_state: int) -> st
 
 def convert_you_to_other(origin: str) -> str:
     after = origin.replace("Your", "His")
+    after = after.replace("You", "He")
     after = after.replace("you", "he")
     after = after.replace("your", "his")
     return after
@@ -298,8 +299,12 @@ def read_txt_files_as_dict(folder_path):
                     file_dict_old = eval(file_content)
                     file_dict={}
                     file_dict['title']=file_dict_old['title']
-                    file_dict['abstract']=file_dict_old['abstract']
-                    file_dict['year']=file_dict_old['year']
+                    if isinstance(file_dict_old['abstract'], tuple):
+                        file_dict['abstract']=file_dict_old['abstract'][0]
+                        file_dict['year']=file_dict_old['year'][0]
+                    else:
+                        file_dict['abstract']=file_dict_old['abstract']
+                        file_dict['year']=file_dict_old['year']
                     file_dict['citation']=file_dict_old['citation']
                     file_dict['id'] = id
                     file_dict['authors'] = None
@@ -317,11 +322,19 @@ def extract_between_json_tags(text, num=None):
     json_blocks = re.findall(r'```json(.*?)```', text, re.DOTALL)
 
     if not json_blocks:
-        start_tag = '```json'
-        end_tag = '```'
-        start_idx = text.find(start_tag)
-        end_idx = text.find(end_tag, start_idx + len(start_tag))
-        return text[start_idx + len(start_tag):].strip()
+        json_blocks = re.findall(r'```(.*?)```', text, re.DOTALL)
+        if not json_blocks:
+            start_tag = '```'
+            end_tag = '```'
+            start_idx = text.find(start_tag)
+            end_idx = text.find(end_tag, start_idx + len(start_tag))
+            return text[start_idx + len(start_tag):].strip()
+        else:
+            if num==None:
+                combined_json = ''.join(block.strip() for block in json_blocks)
+            else:
+                combined_json = ''.join(block.strip() for block in json_blocks[:num])
+            return combined_json
     else:
         if num==None:
             combined_json = ''.join(block.strip() for block in json_blocks)

@@ -246,7 +246,10 @@ class Team:
             topic = topic.msg
             self.log_dialogue(self.teammate[0], topic.content)
             self.topic = extract_between_json_tags(topic.content, num=1)
-            self.topic = strip_non_letters(self.topic.split("Topic")[1])
+            self.topic = strip_non_letters(self.topic.split("Selected Topic")[1])
+            if len(self.topic)<3:
+                self.topic = topic.content
+                self.topic = strip_non_letters(self.topic.split("Selected Topic")[1])
             # update dialogue history
             previous_memories.append(last_turn_summarization)
             topic_message = BaseMessage.make_user_message(role_name="user", content="Final selected topic: "+self.topic)

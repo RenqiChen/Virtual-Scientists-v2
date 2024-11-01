@@ -41,12 +41,17 @@ class Platform:
                  model_configuration: str = './configs/model_configs.json',
                  agent_num: int = 1,
                  port: list = [11434],
-                 root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
-                 author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
-                 paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers",
-                 future_paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers_future",
+                #  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
+                 root_dir: str = '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG',
+                #  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
+                 author_folder_path: str = "/home/bingxing2/ailab/scxlab0066/SocialScience/books_OAG_after",
+                #  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers", 
+                 paper_folder_path: str = '/home/bingxing2/ailab/scxlab0066/SocialScience/papers_OAG',
+                #  future_paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers_future",
+                 future_paper_folder_path: str = "/home/bingxing2/ailab/scxlab0066/SocialScience/papers_future_OAG",
                  author_info_dir: str = 'authors',
-                 adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
+                #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
+                 adjacency_matrix_dir: str = 'data_from_2010to2020_gt_200_citation/181_authors_w_50_degrees_40_papers',
                  agent_model_config_name: str = 'ollama_llama3.1_8b',
                  review_model_config_name: str = 'ollama_llama3.1_70b',
                  knowledgeBank_config_dir: str = "./configs/knowledge_config.json",
@@ -70,7 +75,7 @@ class Platform:
         self.port = port
         self.paper_folder_path = paper_folder_path
         self.paper_future_folder_path = future_paper_folder_path
-        self.author_info_dir = os.path.join(root_dir, author_info_dir)
+        self.author_info_dir = os.path.join(author_folder_path,'author_{}.txt')
         self.adjacency_matrix_dir = os.path.join(root_dir, adjacency_matrix_dir)
         self.group_max_discuss_iteration = group_max_discuss_iteration
         self.recent_n_team_mem_for_retrieve = recent_n_team_mem_for_retrieve
@@ -102,15 +107,15 @@ class Platform:
         self.think_times = max_teammember+1
 
         # author2paper file: dict{'authorID':[paperID1, paperID2, ...]}
-        with open('{}/author2paper.json'.format(root_dir), 'r') as file:
-            self.author2paper = json.load(file)
+        # with open('{}/author2paper.json'.format(root_dir), 'r') as file:
+        #     self.author2paper = json.load(file)
 
         # load k-hop adjacency matrix
         self.degree_int2word = ['one', 'two', 'three', 'four', 'five']
         # self.adjacency_matrix = np.loadtxt(
         #     '{}/{}-hop_adj_matrix.txt'.format(self.adjacency_matrix_dir, self.degree_int2word[hop_num-1]), dtype=int)
         self.adjacency_matrix = np.loadtxt(
-            '{}/adjacency.txt'.format(self.adjacency_matrix_dir), dtype=int)
+            '{}/weight_matrix.txt'.format(self.adjacency_matrix_dir), dtype=int)
 
         # check if agent_num is valid
         if self.agent_num is None:
@@ -119,8 +124,8 @@ class Platform:
             assert self.agent_num <= len(self.adjacency_matrix)
 
         # load agentID2authorID file: dict{'agentID': 'authorID'}
-        with open('{}/agentID2authorID.json'.format(self.adjacency_matrix_dir), 'r') as file:
-            self.agentID2authorID = json.load(file)
+        # with open('{}/agentID2authorID.json'.format(self.adjacency_matrix_dir), 'r') as file:
+        #     self.agentID2authorID = json.load(file)
 
         # init model
         model = ModelFactory.create(
@@ -172,7 +177,7 @@ class Platform:
 
         # init agent pool
         # self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
-        self.agent_pool = self.init_agent_async(model, inference_channel, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt', len(self.adjacency_matrix))
+        self.agent_pool = self.init_agent_async(model, inference_channel, self.author_info_dir, len(self.adjacency_matrix))
         # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
         self.reviewer_pool = self.init_reviewer_async(model, inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
@@ -195,15 +200,18 @@ class Platform:
             agent_id = agent_id + 1
 
         # paper embedding list
-        cpu_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index.index")  # 加载索引
+        # cpu_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index.index")  # 加载索引
+        cpu_index = faiss.read_index("/home/bingxing2/ailab/scxlab0066/SocialScience/faiss_index_OAG.index")
         res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
 
         cpu_authors_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_authors.index")  # 加载索引
+        
         authors_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_authors_index = faiss.index_cpu_to_gpu(authors_res, 0, cpu_authors_index)  # 将索引移到 GPU
 
-        cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
+        # cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
+        cpu_future_index = faiss.read_index("/home/bingxing2/ailab/scxlab0066/SocialScience/faiss_index_OAG_future.index")
         future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
@@ -252,8 +260,8 @@ class Platform:
 
         # 创建并注册用户
         for i in range(count):
-            information_path = information_path.format(i)
-            with open(information_path, 'r') as file:
+            information_path_index = information_path.format(i)
+            with open(information_path_index, 'r') as file:
                 prompt = file.read()
             name = 'Scientist{}'.format(i)
             prompt = BaseMessage.make_assistant_message(
@@ -273,7 +281,7 @@ class Platform:
             # avoid too many teams
             if count_team(team_list[agent_index], self.over_state)>=self.team_limit:
                 continue
-            scientists[agent_index].sys_prompt = scientists[agent_index].orig_sys_message.content + Prompts.role
+            sys_prompt = scientists[agent_index].orig_sys_message.content + Prompts.role
             hint = BaseMessage.make_user_message(role_name="user",
                                           content=Prompts.ask_choice.format_map(
                                               {"Scientist_name": scientists[agent_index].role_name,
@@ -284,7 +292,7 @@ class Platform:
             x= x.msg
             team_list[agent_index][0].log_dialogue('user', hint.content)
             team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, x.content)
-            match = re.search(r'(\d+)', x.content, re.IGNORECASE)
+            match = re.search(r'(\d+)', extract_between_json_tags(x.content), re.IGNORECASE)
 
             # when action2, the agent choose to act independently
             if int(match.group(1))==2:
@@ -330,7 +338,7 @@ class Platform:
                 hint = BaseMessage.make_user_message(content=Prompts.to_scientist_choice.format_map({
                     "inviter_name": scientists[agent_index].role_name,
                     "team_member": str(team_index),
-                    "personal information" : convert_you_to_other(scientists[agent_index].sys_prompt)
+                    "personal information" : convert_you_to_other(sys_prompt)
                 }), role_name="User")
                 # set_parsers(agent, Prompts.scientist_invite_parser)
                 pattern = re.compile(r'1', re.IGNORECASE)
