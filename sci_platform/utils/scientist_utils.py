@@ -328,18 +328,25 @@ def extract_between_json_tags(text, num=None):
             end_tag = '```'
             start_idx = text.find(start_tag)
             end_idx = text.find(end_tag, start_idx + len(start_tag))
-            return text[start_idx + len(start_tag):].strip()
+            combined_json = text[start_idx + len(start_tag):].strip()
+            if combined_json == None:
+                combined_json = 'No response.'
+            return combined_json
         else:
             if num==None:
                 combined_json = ''.join(block.strip() for block in json_blocks)
             else:
                 combined_json = ''.join(block.strip() for block in json_blocks[:num])
+            if combined_json == None:
+                combined_json = 'No response.'
             return combined_json
     else:
         if num==None:
             combined_json = ''.join(block.strip() for block in json_blocks)
         else:
             combined_json = ''.join(block.strip() for block in json_blocks[:num])
+        if combined_json == None:
+            combined_json = 'No response.'
         return combined_json
 
 

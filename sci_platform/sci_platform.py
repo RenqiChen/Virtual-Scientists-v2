@@ -215,6 +215,8 @@ class Platform:
         future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
+        
+
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
         self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
@@ -303,8 +305,8 @@ class Platform:
             # use prompts to select scientists
             scientist = scientists[agent_index].role_name
             name = int(scientist[9:])
-
             arr = self.adjacency_matrix[name, :]
+            arr += 1
             arr[agent_index] = 0
             probabilities = arr / np.sum(arr)
 

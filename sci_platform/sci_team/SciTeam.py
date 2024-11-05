@@ -70,15 +70,20 @@ class Team:
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.info_file = f"{info_dir}/{current_time}_{self.team_name}_dialogue.json"
         self.log_file = f"{log_dir}/{current_time}_{self.team_name}_dialogue.log"
+        # self.log_file_all = f"{log_dir}/ALL_dialogue.log"
 
         # Check if log file exists and delete it
         if os.path.exists(self.log_file):
             os.remove(self.log_file)
 
         self.logger = logging.getLogger(self.team_name)
+        # self.logger_2 = logging.getLogger("ALL")
         self.logger.setLevel(logging.INFO)
+        # self.logger_2.setLevel(logging.INFO)
         fh = logging.FileHandler(self.log_file)
+        # fh_2 = logging.FileHandler(self.log_file_all)
         self.logger.addHandler(fh)
+        # self.logger_2.addHandler(fh_2)
 
     # format memories
     def format_memories(self, current_memories = None, previous_memories = None, team_memories = None):
@@ -245,11 +250,14 @@ class Team:
             topic = await platform.id2agent[self.teammate[0]].step(format_topic_prompt)
             topic = topic.msg
             self.log_dialogue(self.teammate[0], topic.content)
-            self.topic = extract_between_json_tags(topic.content, num=1)
-            self.topic = strip_non_letters(self.topic.split("Selected Topic")[1])
-            if len(self.topic)<3:
-                self.topic = topic.content
+            try:
+                self.topic = extract_between_json_tags(topic.content, num=1)
                 self.topic = strip_non_letters(self.topic.split("Selected Topic")[1])
+                if len(self.topic)<3:
+                    self.topic = topic.content
+                    self.topic = strip_non_letters(self.topic.split("Selected Topic")[1])
+            except:
+                self.topic = topic.content
             # update dialogue history
             previous_memories.append(last_turn_summarization)
             topic_message = BaseMessage.make_user_message(role_name="user", content="Final selected topic: "+self.topic)
@@ -297,12 +305,15 @@ class Team:
                 # self.log_dialogue('user', idea_prompt)
                 self.log_dialogue(agent.role_name, reply.content)
                 old_idea = extract_between_json_tags(reply.content, num=1)
-                if "Title" in old_idea:
-                    idea_key = old_idea.split("Title")[1]
-                    idea_key = strip_non_letters(idea_key.split("Experiment")[0])
-                else:
-                    idea_key = old_idea.split("Idea")[1]
-                    idea_key = strip_non_letters(idea_key.split("Experiment")[0])
+                try:
+                    if "Title" in old_idea:
+                        idea_key = old_idea.split("Title")[1]
+                        idea_key = strip_non_letters(idea_key.split("Experiment")[0])
+                    else:
+                        idea_key = old_idea.split("Idea")[1]
+                        idea_key = strip_non_letters(idea_key.split("Experiment")[0])
+                except:
+                    idea_key = old_idea[:100]
                 if len(idea_key)>=3:
                     paper_reference, cite_paper_new = platform.reference_paper(idea_key, platform.cite_number)
                 else:
@@ -653,6 +664,8 @@ class Team:
         color = Color.GREEN
         name_after = f"{color}{name}{Color.RESET}"
         print(f'{name_after}: {content}')
+        # 全局
+        # self.logger_2.info(f'{name}: {content}')
         print(f'-'*30)
         self.logger.info(f'{"="*50} Epoch:{self.epoch} | {self.state_log[self.state]} | {name} {"="*50}\n{content}')
         # self.logger.info(f'{"="*100}')

@@ -507,58 +507,6 @@ class SciAgent_Async(BaseAgent):
                     response.choices[0].message.content  # type: ignore[arg-type]
                 )
 
-                response.choices[0].message.tool_calls = [
-                    ChatCompletionMessageToolCall(
-                        id=str(uuid.uuid4()),
-                        function=Function(
-                            arguments=str(parsed_content["arguments"]).replace(
-                                "'", '"'
-                            ),
-                            name=str(parsed_content["function"]),
-                        ),
-                        type="function",
-                    )
-                ]
-
-                # Check for external tool call
-                tool_call_request = response.choices[0].message.tool_calls[0]
-                if tool_call_request.function.name in self.external_tool_names:
-                    # if model calls an external tool, directly return the
-                    # request
-                    info = self._step_get_info(
-                        output_messages,
-                        finish_reasons,
-                        usage_dict,
-                        response_id,
-                        tool_call_records,
-                        num_tokens,
-                        tool_call_request,
-                    )
-                    return ChatAgentResponse(
-                        msgs=output_messages,
-                        terminated=self.terminated,
-                        info=info,
-                    )
-
-                # Normal function calling
-                tool_call_records.append(
-                    self._step_tool_call_and_update(response)
-                )
-
-            if (
-                    output_schema is not None
-                    and self.model_type.supports_tool_calling
-            ):
-                (
-                    output_messages,
-                    finish_reasons,
-                    usage_dict,
-                    response_id,
-                    tool_call,
-                    num_tokens,
-                ) = self._structure_output_with_function(output_schema)
-                tool_call_records.append(tool_call)
-
             info = self._step_get_info(
                 output_messages,
                 finish_reasons,
@@ -919,24 +867,33 @@ class SciAgent_Async(BaseAgent):
         output_messages: List[BaseMessage] = []
         response_id: str = ""
         # All choices in one response share one role
-        for chunk in response:
-            response_id = chunk.id
-            for choice in chunk.choices:
-                index = choice.index
-                delta = choice.delta
-                if delta.content is not None:
-                    # When response has not been stopped
-                    # Notice that only the first chunk_dict has the "role"
-                    content_dict[index] += delta.content
-                if choice.finish_reason:
-                    finish_reasons_dict[index] = choice.finish_reason
-                    chat_message = BaseMessage(
-                        role_name=self.role_name,
-                        role_type=self.role_type,
-                        meta_dict=dict(),
-                        content=content_dict[index],
-                    )
-                    output_messages.append(chat_message)
+        try:
+            for chunk in response:
+                response_id = chunk.id
+                for choice in chunk.choices:
+                    index = choice.index
+                    delta = choice.delta
+                    if delta.content is not None:
+                        # When response has not been stopped
+                        # Notice that only the first chunk_dict has the "role"
+                        content_dict[index] += delta.content
+                    if choice.finish_reason:
+                        finish_reasons_dict[index] = choice.finish_reason
+                        chat_message = BaseMessage(
+                            role_name=self.role_name,
+                            role_type=self.role_type,
+                            meta_dict=dict(),
+                            content=content_dict[index],
+                        )
+                        output_messages.append(chat_message)
+        except:
+            chat_message = BaseMessage(
+                    role_name=self.role_name,
+                    role_type=self.role_type,
+                    meta_dict=dict(),
+                    content="No response",
+            )
+            output_messages.append(chat_message)
         finish_reasons = [
             finish_reasons_dict[i] for i in range(len(finish_reasons_dict))
         ]
