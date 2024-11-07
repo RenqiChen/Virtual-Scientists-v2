@@ -275,113 +275,98 @@ class Platform:
 
         return agents
 
-    async def select_coauthors(self,):
-        team_list = self.team_pool
+    async def select_single(self, agent_index):
         scientists = self.agent_pool[:self.agent_num]
-        # decide whether the scientist wants to find partners
-        for agent_index in range(len(scientists)):
-            # avoid too many teams
-            if count_team(team_list[agent_index], self.over_state)>=self.team_limit:
-                continue
-            sys_prompt = scientists[agent_index].orig_sys_message.content + Prompts.role
-            hint = BaseMessage.make_user_message(role_name="user",
-                                          content=Prompts.ask_choice.format_map(
-                                              {"Scientist_name": scientists[agent_index].role_name,
-                                               "All_team": team_description(team_list[agent_index],
-                                                                            self.over_state)})
-                                          )
-            x = await scientists[agent_index].step(hint)
-            x= x.msg
-            team_list[agent_index][0].log_dialogue('user', hint.content)
-            team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, x.content)
-            match = re.search(r'(\d+)', extract_between_json_tags(x.content), re.IGNORECASE)
-
+        # avoid too many teams
+        if count_team(self.team_pool[agent_index], self.over_state)>=self.team_limit:
+            return
+        sys_prompt = scientists[agent_index].orig_sys_message.content + Prompts.role
+        hint = BaseMessage.make_user_message(role_name="user",
+                                        content=Prompts.ask_choice.format_map(
+                                            {"Scientist_name": scientists[agent_index].role_name,
+                                            "All_team": team_description(self.team_pool[agent_index],
+                                                                        self.over_state)})
+                                        )
+        x = await scientists[agent_index].step(hint)
+        x= x.msg
+        self.team_pool[agent_index][0].log_dialogue('user', hint.content)
+        self.team_pool[agent_index][0].log_dialogue(scientists[agent_index].role_name, x.content)
+        match = re.search(r'(\d+)', extract_between_json_tags(x.content), re.IGNORECASE)
+        if match != None:
             # when action2, the agent choose to act independently
             if int(match.group(1))==2:
                 print("Single Agent Independently!")
-                team_list[agent_index][0].state=2
+                self.team_pool[agent_index][0].state=2
+                return
+
+        # use prompts to select scientists
+        scientist = scientists[agent_index].role_name
+        name = int(scientist[9:])
+        arr = self.adjacency_matrix[name, :]
+        arr += 1
+        arr[agent_index] = 0
+        probabilities = arr / np.sum(arr)
+
+        selected_indices = np.random.choice(len(arr), size=self.max_teammember, p=probabilities, replace=False)
+
+        team_candidate = []
+        for i in range(len(selected_indices)):
+            team_candidate.append(f"Scientist{selected_indices[i]}")
+
+        # print(team_candidate)
+        self.team_pool[agent_index][0].log_dialogue(scientists[agent_index].role_name, ','.join(team_candidate))
+
+        # ask each scientist to decide whether to join
+        agent_candidate = self.id_to_agent(team_candidate)
+        # create new team
+        team_index = []
+        team_index.append(scientists[agent_index].role_name)
+        for agent in agent_candidate:
+            if agent.role_name == scientists[agent_index].role_name:
                 continue
 
-            # use prompts to select scientists
-            scientist = scientists[agent_index].role_name
-            name = int(scientist[9:])
-            arr = self.adjacency_matrix[name, :]
-            arr += 1
-            arr[agent_index] = 0
-            probabilities = arr / np.sum(arr)
+            hint = BaseMessage.make_user_message(content=Prompts.to_scientist_choice.format_map({
+                "inviter_name": scientists[agent_index].role_name,
+                "team_member": str(team_index),
+                "personal information" : convert_you_to_other(sys_prompt)
+            }), role_name="User")
+            # set_parsers(agent, Prompts.scientist_invite_parser)
+            pattern = re.compile(r'1', re.IGNORECASE)
+            # action1 means a scientist accepts the invitance
+            x = await agent.step(hint)
+            x = x.msg
+            if pattern.search(extract_between_json_tags(x.content, num=1)):
+                team_index.append(agent.role_name)
+            self.team_pool[agent_index][0].log_dialogue('user', hint.content)
+            self.team_pool[agent_index][0].log_dialogue(agent.role_name, x.content)
 
-            selected_indices = np.random.choice(len(arr), size=self.max_teammember, p=probabilities, replace=False)
+        team_dic = Team(team_name = str(agent_index+1)+','+str(len(self.team_pool[agent_index])+1),
+                        log_dir = self.log_dir,
+                        info_dir = self.info_dir,
+                        recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)
+        team_dic.state=2
+        team_dic.teammate = team_index
+        self.team_pool[agent_index].append(team_dic)
 
-            team_candidate = []
-            for i in range(len(selected_indices)):
-                team_candidate.append(f"Scientist{selected_indices[i]}")
+        # connetion between collaborators will be closer
+        for member in team_dic.teammate:
+            if int(member[9:])!=agent_index:
+                self.adjacency_matrix[agent_index, int(member[9:])]=self.adjacency_matrix[agent_index, int(member[9:])]+0.2
+                self.adjacency_matrix[int(member[9:]), agent_index]=self.adjacency_matrix[int(member[9:]), agent_index]+0.2
+        # summary current teams in memory
+        summary_select = await scientists[agent_index].step(BaseMessage.make_user_message(
+            content=team_description_detail(self.team_pool[agent_index], self.agent_pool, self.over_state),
+            role_name="User"))
+        self.team_pool[agent_index][0].log_dialogue(scientists[agent_index].role_name, summary_select.msg.content)
 
-            # print(team_candidate)
-            team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, ','.join(team_candidate))
-            is_contained = False
-            for agent_list in team_list:
-                for sublist in agent_list:
-                    if set(sublist.teammate) == set(team_candidate) and sublist.state != self.over_state:
-                        is_contained = True
-                        break
-                if is_contained == True:
-                    break
-            if is_contained == True:
-                continue
-            # ask each scientist to decide whether to join
-            agent_candidate = self.id_to_agent(team_candidate)
-            # create new team
-            team_index = []
-            team_index.append(scientists[agent_index].role_name)
-            for agent in agent_candidate:
-                if agent.role_name == scientists[agent_index].role_name:
-                    continue
-
-                hint = BaseMessage.make_user_message(content=Prompts.to_scientist_choice.format_map({
-                    "inviter_name": scientists[agent_index].role_name,
-                    "team_member": str(team_index),
-                    "personal information" : convert_you_to_other(sys_prompt)
-                }), role_name="User")
-                # set_parsers(agent, Prompts.scientist_invite_parser)
-                pattern = re.compile(r'1', re.IGNORECASE)
-                # action1 means a scientist accepts the invitance
-                x = await agent.step(hint)
-                x = x.msg
-                if pattern.search(extract_between_json_tags(x.content, num=1)):
-                    team_index.append(agent.role_name)
-                team_list[agent_index][0].log_dialogue('user', hint.content)
-                team_list[agent_index][0].log_dialogue(agent.role_name, x.content)
-
-            # delete repeated teams
-            is_contained = False
-            for agent_list in team_list:
-                for sublist in agent_list:
-                    if set(sublist.teammate) == set(team_index) and sublist.state != self.over_state:
-                        is_contained = True
-                        break
-                if is_contained == True:
-                    break
-            if is_contained == False:
-                team_dic = Team(team_name = str(agent_index+1)+','+str(len(self.team_pool[agent_index])+1),
-                                log_dir = self.log_dir,
-                                info_dir = self.info_dir,
-                                recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)
-                team_dic.state=2
-                team_dic.teammate = team_index
-                team_list[agent_index].append(team_dic)
-
-                # connetion between collaborators will be closer
-                for member in team_dic.teammate:
-                    if int(member[9:])!=agent_index:
-                        self.adjacency_matrix[agent_index, int(member[9:])]=self.adjacency_matrix[agent_index, int(member[9:])]+0.2
-                        self.adjacency_matrix[int(member[9:]), agent_index]=self.adjacency_matrix[int(member[9:]), agent_index]+0.2
-                # summary current teams in memory
-                summary_select = await scientists[agent_index].step(BaseMessage.make_user_message(
-                    content=team_description_detail(team_list[agent_index], self.agent_pool, self.over_state),
-                    role_name="User"))
-                team_list[agent_index][0].log_dialogue(scientists[agent_index].role_name, summary_select.msg.content)
-            else:
-                continue
+    async def select_coauthors(self,):
+        scientists = self.agent_pool[:self.agent_num]
+        # decide whether the scientist wants to find partners
+        select_tasks = []
+        for agent_index in range(len(scientists)):
+            select_tasks.append(self.select_single(agent_index))
+        await asyncio.gather(*select_tasks)  # 并行执行所有任务
+        team_list = self.team_pool
         return team_list
 
     def id_to_agent(self, team_list):
@@ -397,9 +382,15 @@ class Platform:
         return agent_list
 
     def reference_paper(self, key_string, cite_number):
-        query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
-        query_vector = np.array([query_vector['embedding']])
-        D, I = self.gpu_index.search(query_vector, cite_number)
+        try:
+            query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
+            query_vector = np.array([query_vector['embedding']])
+            D, I = self.gpu_index.search(query_vector, cite_number)
+        except:
+            key_string = "No contents."
+            query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
+            query_vector = np.array([query_vector['embedding']])
+            D, I = self.gpu_index.search(query_vector, cite_number)
 
         paper_use = []
         for id in range(len(I[0])):

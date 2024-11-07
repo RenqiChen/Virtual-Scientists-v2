@@ -68,21 +68,21 @@ class Team:
 
         # init log file dir
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.info_file = f"{info_dir}/{current_time}_{self.team_name}_dialogue.json"
-        self.log_file = f"{log_dir}/{current_time}_{self.team_name}_dialogue.log"
+        # self.info_file = f"{info_dir}/{current_time}_{self.team_name}_dialogue.json"
+        # self.log_file = f"{log_dir}/{current_time}_{self.team_name}_dialogue.log"
         # self.log_file_all = f"{log_dir}/ALL_dialogue.log"
 
         # Check if log file exists and delete it
-        if os.path.exists(self.log_file):
-            os.remove(self.log_file)
+        # if os.path.exists(self.log_file):
+        #     os.remove(self.log_file)
 
-        self.logger = logging.getLogger(self.team_name)
+        # self.logger = logging.getLogger(self.team_name)
         # self.logger_2 = logging.getLogger("ALL")
-        self.logger.setLevel(logging.INFO)
+        # self.logger.setLevel(logging.INFO)
         # self.logger_2.setLevel(logging.INFO)
-        fh = logging.FileHandler(self.log_file)
+        # fh = logging.FileHandler(self.log_file)
         # fh_2 = logging.FileHandler(self.log_file_all)
-        self.logger.addHandler(fh)
+        # self.logger.addHandler(fh)
         # self.logger_2.addHandler(fh_2)
 
     # format memories
@@ -434,12 +434,15 @@ class Team:
                 choice_list.append(int(idea_choice))
 
         final_choice = most_frequent_element(choice_list)
-        if final_choice<0 or final_choice>=len(existing_idea):
-            final_choice = len(existing_idea)-1
         try:
             self.idea = existing_idea[final_choice]
         except:
             self.idea = existing_idea[0]
+        if self.idea == None:
+            self.idea = 'No idea and you can think freely.'
+        if len(self.idea)<10:
+            self.idea = 'No idea and you can think freely.'
+
         print("Final Idea:")
         print(self.idea)
         self.state=5
@@ -667,7 +670,7 @@ class Team:
         # 全局
         # self.logger_2.info(f'{name}: {content}')
         print(f'-'*30)
-        self.logger.info(f'{"="*50} Epoch:{self.epoch} | {self.state_log[self.state]} | {name} {"="*50}\n{content}')
+        # self.logger.info(f'{"="*50} Epoch:{self.epoch} | {self.state_log[self.state]} | {name} {"="*50}\n{content}')
         # self.logger.info(f'{"="*100}')
 
     def save_team_info(self):

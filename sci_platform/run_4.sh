@@ -24,6 +24,9 @@ OLLAMA_HOST=127.0.0.1:11449 ./ollama serve &
 OLLAMA_HOST=127.0.0.1:11450 ./ollama serve &
 OLLAMA_HOST=127.0.0.1:11451 ./ollama serve &
 OLLAMA_HOST=127.0.0.1:11452 ./ollama serve &
+OLLAMA_HOST=127.0.0.1:11453 ./ollama serve &
+OLLAMA_HOST=127.0.0.1:11454 ./ollama serve &
+OLLAMA_HOST=127.0.0.1:11455 ./ollama serve &
 
 cd /home/bingxing2/ailab/scxlab0066/SocialScience/Social_Science_CAMEL/sci_platform
-python run_fast.py 2>&1 | tee output_fast.txt
+python run_fast.py 2>&1 | tee output_fast_4.txt

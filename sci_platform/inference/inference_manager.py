@@ -30,6 +30,8 @@ class InferencerManager:
         self.count = 0
         self.channel = channel
         self.threads = []
+        self.lock = threading.Lock(
+        )
         for url in server_url:
             host = url["host"]
             for port in url["ports"]:
@@ -52,28 +54,30 @@ class InferencerManager:
             for thread in self.threads:
                 if thread.alive == False:
                     a=a+1
-                if thread.shared_memory.Done:
-                    await self.channel.send_to(
-                        (thread.shared_memory.Message_ID,
-                         thread.shared_memory.Response))
-                    thread.shared_memory.Done = False
-                    thread.shared_memory.Busy = False
-                    thread.shared_memory.Working = False
+                with self.lock:
+                    if thread.shared_memory.Done:
+                        await self.channel.send_to(
+                            (thread.shared_memory.Message_ID,
+                            thread.shared_memory.Response))
+                        thread.shared_memory.Done = False
+                        thread.shared_memory.Busy = False
+                        thread.shared_memory.Working = False
 
                 if not thread.shared_memory.Busy:
                     if self.channel.receive_queue.empty():
                         continue
                     message = await self.channel.receive_from()
                     # thread is model, get the input message
-                    thread.shared_memory.Message_ID = message[0]
-                    thread.shared_memory.Message = message[1]
-                    thread.shared_memory.Busy = True
-                    self.count += 1
-                    inference_log.info(f"Message {self.count} received")
+                    with self.lock:
+                        thread.shared_memory.Message_ID = message[0]
+                        thread.shared_memory.Message = message[1]
+                        thread.shared_memory.Busy = True
+                        self.count += 1
+                        inference_log.info(f"Message {self.count} received")
             if a==len(self.threads):
                 print(f'{"="*50} Over {"="*50}')
                 break
-            await asyncio.sleep(0.0001)
+            await asyncio.sleep(0.01)
 
     async def stop(self):
         for thread in self.threads:
