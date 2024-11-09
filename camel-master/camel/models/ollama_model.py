@@ -29,6 +29,7 @@ class OllamaModel:
     def __init__(
         self,
         model_type: str,
+        embed_model_type: str,
         model_config_dict: Dict[str, Any],
         url: Optional[str] = None,
         token_counter: Optional[BaseTokenCounter] = None,
@@ -48,6 +49,7 @@ class OllamaModel:
                 GPT_4O_MINI)` will be used.
         """
         self.model_type = model_type
+        self.embed_model_type = embed_model_type,
         self.model_config_dict = model_config_dict
         self._url = (
             url
@@ -132,6 +134,35 @@ class OllamaModel:
             messages=messages,
             model=self.model_type,
             **self.model_config_dict,
+        )
+        return response
+
+    def embed_run(
+        self,
+        messages: List[OpenAIMessage],
+    ) -> Union[ChatCompletion, Stream[ChatCompletionChunk]]:
+        r"""Runs inference of OpenAI chat completion.
+
+        Args:
+            messages (List[OpenAIMessage]): Message list with the chat history
+                in OpenAI API format.
+
+        Returns:
+            Union[ChatCompletion, Stream[ChatCompletionChunk]]:
+                `ChatCompletion` in the non-stream mode, or
+                `Stream[ChatCompletionChunk]` in the stream mode.
+        """
+        # print('before')
+        # print(messages)
+        # messages = [{"role": "user", "content": msg['content']} for msg in messages]
+        # print('after')
+        # print(messages)
+        message = messages[0].content
+        embed_model_type=self.embed_model_type[0]
+        response = self._client.embeddings.create(
+            input=message,
+            model=embed_model_type,
+            **{},
         )
         return response
 

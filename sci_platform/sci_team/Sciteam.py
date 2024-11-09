@@ -282,6 +282,7 @@ class Team:
         mark_list = []
         # search related paper about the topic
         selected_topics = strip_non_letters(topic.split("Selected Topics:")[-1])
+        paper_reference, cite_paper = platform.reference_paper(selected_topics, platform.cite_number)
 
         teammate = platform.id_to_agent(self.teammate)
         idea_judge = True
@@ -290,17 +291,6 @@ class Team:
             group_max_discuss_iteration = platform.group_max_discuss_iteration
         else:
             group_max_discuss_iteration = platform.group_max_discuss_iteration
-        
-        try:
-            selected_topics_prompt = BaseMessage.make_user_message(role_name="user", content=selected_topics)
-            query_vector = await teammate[0].embed_step(selected_topics_prompt)
-            query_vector = np.array([query_vector.data[0].embedding])
-        except:
-            selected_topics = "No topics."
-            selected_topics_prompt = BaseMessage.make_user_message(role_name="user", content=selected_topics)
-            query_vector = await teammate[0].embed_step(selected_topics_prompt)
-            query_vector = np.array([query_vector.data[0].embedding])
-        paper_reference, cite_paper = platform.reference_paper(query_vector, platform.cite_number)
 
         for turn in range(group_max_discuss_iteration):
             # discuss the idea
@@ -324,19 +314,8 @@ class Team:
                         idea_key = strip_non_letters(idea_key.split("Experiment")[0])
                 except:
                     idea_key = old_idea[:100]
-
                 if len(idea_key)>=3:
-                    try:
-                        idea_key_prompt = BaseMessage.make_user_message(role_name="user", content=idea_key)
-                        query_vector = await teammate[0].embed_step(idea_key_prompt)
-                        query_vector = np.array([query_vector.data[0].embedding])
-                    except:
-                        idea_key = "No topics."
-                        idea_key_prompt = BaseMessage.make_user_message(role_name="user", content=idea_key)
-                        query_vector = await teammate[0].embed_step(idea_key_prompt)
-                        query_vector = np.array([query_vector.data[0].embedding])
-                    paper_reference, cite_paper_new = platform.reference_paper(query_vector, platform.cite_number)
-
+                    paper_reference, cite_paper_new = platform.reference_paper(idea_key, platform.cite_number)
                 else:
                     paper_reference=''
                     cite_paper_new=[]
@@ -399,7 +378,6 @@ class Team:
         print(len(self.citation_id))
 
     async def check_novelty(self, platform):
-        teammate = platform.id_to_agent(self.teammate)
         existing_idea = self.idea
         idea_choices = ""
         for idea_index in range(len(existing_idea)):
@@ -419,16 +397,7 @@ class Team:
             if len(title)<5:
                 related_paper=[]
             else:
-                try:
-                    title_prompt = BaseMessage.make_user_message(role_name="user", content=title)
-                    query_vector = await teammate[0].embed_step(title_prompt)
-                    query_vector = np.array([query_vector.data[0].embedding])
-                except:
-                    title = "No titles."
-                    title_prompt = BaseMessage.make_user_message(role_name="user", content=title)
-                    query_vector = await teammate[0].embed_step(title_prompt)
-                    query_vector = np.array([query_vector.data[0].embedding])
-                _, related_paper = platform.reference_paper(query_vector, cite_number)
+                _, related_paper = platform.reference_paper(title, cite_number)
 
             related_papers = list(set(related_papers).union(related_paper))
 
@@ -439,6 +408,7 @@ class Team:
             paper_reference = paper_reference+"Title: "+platform.paper_dicts[paper_index]['title']+"\n"
             paper_reference = paper_reference+"Abstract: "+platform.paper_dicts[paper_index]['abstract']+"}"+"\n"
 
+        teammate = platform.id_to_agent(self.teammate)
         choice_list = []
         if len(teammate)==1:
             group_max_discuss_iteration = platform.group_max_discuss_iteration
@@ -526,16 +496,8 @@ class Team:
         related_papers = []
 
         Abstract = strip_non_letters(old_abstract.split("Abstract")[1])
-
-        try:
-            abstract_prompt = BaseMessage.make_user_message(role_name="user", content=Abstract)
-            query_vector = await teammate[0].embed_step(abstract_prompt)
-            query_vector = np.array([query_vector.data[0].embedding])
-        except:
-            Abstract = "No abstracts."
-            abstract_prompt = BaseMessage.make_user_message(role_name="user", content=Abstract)
-            query_vector = await teammate[0].embed_step(abstract_prompt)
-            query_vector = np.array([query_vector.data[0].embedding])
+        query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=Abstract)
+        query_vector = np.array([query_vector['embedding']])
 
         D_future, I_future = platform.gpu_future_index.search(query_vector, int(platform.cite_number/2))
         D, I = platform.gpu_index.search(query_vector, int(platform.cite_number/2))
@@ -567,31 +529,10 @@ class Team:
         # eval with embedding similarity
         abs = []
         our_abs = strip_non_letters(old_abstract.split('Abstract')[1])
-
-        try:
-            our_abs_prompt = BaseMessage.make_user_message(role_name="user", content=our_abs)
-            query_vector = await teammate[0].embed_step(our_abs_prompt)
-            query_vector = query_vector.data[0].embedding
-        except:
-            our_abs = "No abstracts."
-            our_abs_prompt = BaseMessage.make_user_message(role_name="user", content=our_abs)
-            query_vector = await teammate[0].embed_step(our_abs_prompt)
-            query_vector = query_vector.data[0].embedding
-
-        abs.append(query_vector)
-
+        abs.append(ollama.embeddings(model="mxbai-embed-large", prompt=our_abs)['embedding'])
         for paper_id in range(len(related_papers)):
             related_astract = related_papers[paper_id]['abstract']
-            try:
-                related_astract_prompt = BaseMessage.make_user_message(role_name="user", content=related_astract)
-                query_vector = await teammate[0].embed_step(related_astract_prompt)
-                query_vector = query_vector.data[0].embedding
-            except:
-                related_astract = "No abstracts."
-                related_astract_prompt = BaseMessage.make_user_message(role_name="user", content=related_astract)
-                query_vector = await teammate[0].embed_step(related_astract_prompt)
-                query_vector = query_vector.data[0].embedding
-            abs.append(query_vector)
+            abs.append(ollama.embeddings(model="mxbai-embed-large", prompt=related_astract)['embedding'])
 
         sim = []
         for emb_id in range(1, len(abs)):
@@ -715,18 +656,8 @@ class Team:
             platform.paper_dicts.append(file_dict)
             # add embedding into list
             embedding_list = []
-
-            try:
-                abstract_prompt = BaseMessage.make_user_message(role_name="user", content=abstract)
-                query_vector = await platform.reviewer_pool[0].embed_step(abstract_prompt)
-                query_vector = query_vector.data[0].embedding
-            except:
-                abstract = "No abstracts."
-                abstract_prompt = BaseMessage.make_user_message(role_name="user", content=abstract)
-                query_vector = await platform.reviewer_pool[0].embed_step(abstract_prompt)
-                query_vector = query_vector.data[0].embedding
-
-            embedding_list.append(query_vector)
+            response = ollama.embeddings(model="mxbai-embed-large", prompt=abstract)
+            embedding_list.append(response["embedding"])
             response = np.array(embedding_list)
             platform.gpu_index.add(response)
         else:

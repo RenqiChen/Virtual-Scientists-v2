@@ -25,6 +25,7 @@ class InferenceThread:
         stop_tokens: list[str] = None,
         model_platform_type: ModelPlatformType = ModelPlatformType.VLLM,
         model_type: str = "llama3.1",
+        embed_model_type: str = "mxbai-embed-large",
         temperature: float = 0.5,
         shared_memory: SharedMemory = None
     ):
@@ -33,6 +34,7 @@ class InferenceThread:
         self.server_url = server_url
         # print('model_type in InferenceThread:', model_type)
         self.model_type = model_type
+        self.embed_model_type = embed_model_type
 
         # print('server_url:', server_url)
         print('self.model_type:', self.model_type)
@@ -40,6 +42,7 @@ class InferenceThread:
         self.model_backend: BaseModelBackend = ModelFactory.create(
             model_platform=ModelPlatformType.OLLAMA,
             model_type=self.model_type,
+            embed_model_type=self.embed_model_type,
             url=server_url,
             model_config_dict={"temperature": 0.4},
         )
@@ -54,12 +57,20 @@ class InferenceThread:
             if self.shared_memory.Busy and not self.shared_memory.Working:
                 self.shared_memory.Working = True
                 try:
-                    response = self.model_backend.run(
-                        self.shared_memory.Message)
-                    self.shared_memory.Response = response
+                    if self.embed_model_type==None:
+                        response = self.model_backend.run(
+                            self.shared_memory.Message)
+                        self.shared_memory.Response = response
+                    else:
+                        response = self.model_backend.embed_run(
+                            self.shared_memory.Message)
+                        self.shared_memory.Response = response
                 except Exception as e:
                     print('Receive Response Exception:', str(e))
-                    self.shared_memory.Response = "No response."
+                    if self.embed_model_type==None:
+                        self.shared_memory.Response = "No response."
+                    else:
+                        self.shared_memory.Response = None
                 self.shared_memory.Done = True
                 self.count += 1
                 thread_log.info(f"Thread {self.server_url}: {self.count} finished.")

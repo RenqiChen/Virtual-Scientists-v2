@@ -32,7 +32,6 @@ from utils.scientist_utils import (
 
 import asyncio
 from inference.inference_manager import InferencerManager
-from social_agent.channel import Channel
 
 class Platform:
     r"""Platform."""
@@ -131,45 +130,91 @@ class Platform:
         model = ModelFactory.create(
             model_platform=ModelPlatformType.OLLAMA,
             model_type="llama3.1",
+            embed_model_type = "mxbai-embed-large",
             url="http://127.0.0.1:11434/v1",
             model_config_dict={"temperature": 0.4},
         )
 
         inference_channel = Channel()
+        embed_inference_channel = Channel()
         inference_channel_reviewer = Channel()
         inference_configs = {
             'model_type': "llama3.1",
+            'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
             'server_url': [
                 {
+                'host': 'paraai-n32-h-01-agent-218',
+                'ports': self.port[:16]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-188',
+                'ports': self.port[:16]
+                },
+                {
                 'host': '127.0.0.1',
-                'ports': self.port
-                }
+                'ports': self.port[16:]
+                },
+          ]
+        }
+        embed_inference_configs = {
+            'model_type': 'llama3.1',
+            'embed_model_type': "mxbai-embed-large",
+            'model_path': 'API',
+            'stop_tokens': None,
+            'server_url': [
+                {
+                'host': 'paraai-n32-h-01-agent-218',
+                'ports': self.port[:16]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-188',
+                'ports': self.port[:16]
+                },
+                {
+                'host': '127.0.0.1',
+                'ports': self.port[16:]
+                },
           ]
         }
         inference_reviewer_configs = {
             'model_type': "llama3.1",
+            'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
             'server_url': [
                 {
+                'host': 'paraai-n32-h-01-agent-218',
+                'ports': self.port[:16]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-188',
+                'ports': self.port[:16]
+                },
+                {
                 'host': '127.0.0.1',
-                'ports': self.port
-                }
+                'ports': self.port[16:]
+                },
           ]
         }
         self.infere = InferencerManager(
             inference_channel,
             **inference_configs,
         )
+        self.embed_infere = InferencerManager(
+            embed_inference_channel,
+            **embed_inference_configs,
+        )
         self.infere_reviewer = InferencerManager(
             inference_channel_reviewer,
             **inference_reviewer_configs,
         )
+
         # model = ModelFactory.create(
         #     model_platform=ModelPlatformType.INTERN,
         #     model_type = ModelType.INTERN_VL,
+        #     embed_model_type = None,
         #     api_key="sk-gaqeyxvrpmjondtmihuydxjevoztjgibkfmfqyhgmonhfsml",
         #     url="https://api.siliconflow.cn/v1",
         #     model_config_dict={"temperature": 0.4},
@@ -177,7 +222,7 @@ class Platform:
 
         # init agent pool
         # self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
-        self.agent_pool = self.init_agent_async(model, inference_channel, self.author_info_dir, len(self.adjacency_matrix))
+        self.agent_pool = self.init_agent_async(model, inference_channel, embed_inference_channel, self.author_info_dir, len(self.adjacency_matrix))
         # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
         self.reviewer_pool = self.init_reviewer_async(model, inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
@@ -214,8 +259,6 @@ class Platform:
         cpu_future_index = faiss.read_index("/home/bingxing2/ailab/scxlab0066/SocialScience/faiss_index_OAG_future.index")
         future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
-
-        
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
         self.author_dicts = read_txt_files_as_list(self.author_folder_path)
@@ -256,7 +299,7 @@ class Platform:
 
         return agent
     
-    def init_agent_async(self, model, channel, information_path, count):
+    def init_agent_async(self, model, channel, embed_channel, information_path, count):
         agents = []
         inference_channel = channel
 
@@ -270,7 +313,7 @@ class Platform:
                 role_name=name,
                 content=prompt,
             )
-            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, embed_channel=embed_channel, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
             agents.append(agent)
 
         return agents
@@ -381,16 +424,8 @@ class Platform:
             agent_list.append(agent_id.role_name)
         return agent_list
 
-    def reference_paper(self, key_string, cite_number):
-        try:
-            query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
-            query_vector = np.array([query_vector['embedding']])
-            D, I = self.gpu_index.search(query_vector, cite_number)
-        except:
-            key_string = "No contents."
-            query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
-            query_vector = np.array([query_vector['embedding']])
-            D, I = self.gpu_index.search(query_vector, cite_number)
+    def reference_paper(self, query_vector, cite_number):
+        D, I = self.gpu_index.search(query_vector, cite_number)
 
         paper_use = []
         for id in range(len(I[0])):
@@ -434,6 +469,7 @@ class Platform:
     async def running(self, epochs):
         # 创建调度任务
         self.inference_task = asyncio.create_task(self.infere.run())
+        self.embed_inference_task = asyncio.create_task(self.embed_infere.run())
         self.inference_task_reviewer = asyncio.create_task(self.infere_reviewer.run())
         # init team_pool
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
@@ -456,6 +492,7 @@ class Platform:
             self.team_pool = await self.select_coauthors()
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
         await self.infere.stop()
+        await self.embed_infere.stop()
         await self.infere_reviewer.stop()
         # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
         await self.inference_task,self.inference_task_reviewer

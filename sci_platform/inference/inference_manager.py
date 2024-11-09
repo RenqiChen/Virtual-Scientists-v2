@@ -23,6 +23,7 @@ class InferencerManager:
         self,
         channel,
         model_type,
+        embed_model_type,
         model_path,
         stop_tokens,
         server_url,
@@ -41,6 +42,7 @@ class InferencerManager:
                                          server_url=_url,
                                          stop_tokens=stop_tokens,
                                          model_type=model_type,
+                                         embed_model_type=embed_model_type,
                                          temperature=0.0,
                                          shared_memory=shared_memory)
                 self.threads.append(thread)

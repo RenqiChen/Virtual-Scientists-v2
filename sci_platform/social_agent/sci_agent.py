@@ -149,6 +149,7 @@ class SciAgent_Async(BaseAgent):
             system_message: Optional[BaseMessage] = None,
             model: Optional[BaseModelBackend] = None,
             channel: Channel = None,
+            embed_channel:  Channel=None,
             memory: Optional[AgentMemory] = None,
             message_window_size: Optional[int] = None,
             token_limit: Optional[int] = None,
@@ -166,6 +167,7 @@ class SciAgent_Async(BaseAgent):
                 getattr(system_message, 'role_type', None) or RoleType.ASSISTANT
         )
         self.inference_channel = channel
+        self.embed_inference_channel = embed_channel
         self.model_backend: BaseModelBackend = (
             model
             if model is not None
@@ -619,6 +621,40 @@ class SciAgent_Async(BaseAgent):
             return ChatAgentResponse(
                 msgs=output_messages, terminated=self.terminated, info=info
             )
+    
+    async def embed_step(
+            self,
+            input_message: BaseMessage,
+            output_schema: Optional[Type[BaseModel]] = None,
+            use_memory: bool = False
+    ) -> ChatAgentResponse:
+        r"""Performs a single step in the chat session by generating a response
+        to the input message.
+
+        Args:
+            input_message (BaseMessage): The input message to the agent.
+                Its `role` field that specifies the role at backend may be
+                either `user` or `assistant` but it will be set to `user`
+                anyway since for the self agent any incoming message is
+                external.
+            output_schema (Optional[Type[BaseModel]], optional): A pydantic
+                model class that includes value types and field descriptions
+                used to generate a structured response by LLM. This schema
+                helps in defining the expected output format. (default:
+                :obj:`None`)
+
+        Returns:
+            ChatAgentResponse: A struct containing the output messages,
+                a boolean indicating whether the chat session has terminated,
+                and information about the chat session.
+        """
+
+        response = await self._embed_step_model_response([input_message])
+        # If the model response is not a function call, meaning the
+        # model has generated a message response, break the loop
+
+        return response
+
 
     def _step_tool_call_and_update(
             self, response: ChatCompletion
@@ -760,6 +796,26 @@ class SciAgent_Async(BaseAgent):
             usage_dict,
             response_id,
         )
+
+    async def _embed_step_model_response(
+            self,
+            openai_messages: List[OpenAIMessage],
+    ) -> tuple[
+        Union[ChatCompletion, Stream],
+        List[BaseMessage],
+        List[str],
+        Dict[str, int],
+        str,
+    ]:
+        r"""Internal function for agent step model response."""
+        # Obtain the model's response
+        message_id = await self.embed_inference_channel.write_to_receive_queue(
+            openai_messages)
+        message_id, content = await self.embed_inference_channel.read_from_send_queue(message_id)
+
+        response = content
+
+        return response
 
     def _step_get_info(
             self,

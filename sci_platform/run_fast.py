@@ -25,7 +25,8 @@ def parse_arguments():
     parser.add_argument(
         "--port",
         type=list,
-        default=[11434,11435,11436,11437,11438,11439,11440,11441,11442,11443,11444,11445,11446,11447,11448,11449,11450,11451,11452],
+        default=list(range(11434, 11466)),
+        # default=[11434],
         help="How many ports are used"
     )
     # how many runs
@@ -39,7 +40,7 @@ def parse_arguments():
     parser.add_argument(
         "--team_limit",
         type=int,
-        default=2,
+        default=3,
         help="Max number of teams for a scientist.",
     )
     parser.add_argument(
@@ -96,7 +97,7 @@ if __name__ == '__main__':
         #     platform_example.running(args.epochs)
         # except:
         #     pass
-        # break
+        break
         if len(os.listdir(args.save_dir)) >= args.team_limit*args.runs:
             end = True
 

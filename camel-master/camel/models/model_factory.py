@@ -46,6 +46,7 @@ class ModelFactory:
     def create(
         model_platform: ModelPlatformType,
         model_type: Union[ModelType, str],
+        embed_model_type: Union[ModelType, str],
         model_config_dict: Dict,
         token_counter: Optional[BaseTokenCounter] = None,
         api_key: Optional[str] = None,
@@ -110,7 +111,7 @@ class ModelFactory:
             if model_platform.is_ollama:
                 model_class = OllamaModel
                 return model_class(
-                    model_type, model_config_dict, url, token_counter
+                    model_type, embed_model_type, model_config_dict, url, token_counter
                 )
             elif model_platform.is_vllm:
                 model_class = VLLMModel

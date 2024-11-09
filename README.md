@@ -24,7 +24,9 @@ OLLAMA_HOST=127.0.0.1:11455 ./ollama serve &
 OLLAMA_HOST=127.0.0.1:11456 ./ollama serve &
 
 sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr run.sh
-sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr run_2.sh
+sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr run_3.sh
+
+srun -p ai4agr -n 1 -N 1 --gres=gpu:4 hostname
 
 salloc --gpus=4 -N 2 -p vip_gpu_ailab -A ai4agr  --qos=gpugpu
 
@@ -37,3 +39,19 @@ ctrl+b c
 ctrl+b w
 计算节点
 python run.py 2>&1 | tee output.txt
+
+
+output_small :24000, big port
+output_2: origin 100000, small port
+output_3: origin 100000, big port
+salloc fast: 50000, big port
+
+df -Th /home/bingxing2/ailab/scxlab0066/
+
+OLLAMA_HOST=0.0.0.0:11434 ./ollama serve &
+
+
+### multi-GPU
+sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr port1.sh
+
+sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr port2.sh
