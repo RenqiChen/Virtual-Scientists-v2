@@ -16,19 +16,26 @@ import numpy as np
 # # }])
 # query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
 # print(query_vector)
-_url = "http://127.0.0.1:11450/v1"
-model_config_dict={}
-_client = OpenAI(
-    timeout=60,
-    max_retries=3,
-    base_url=_url,
-    api_key="ollama",  # required but ignored
-)
-messages = "What is the name of the album with the most tracks?"
-model_type = "mxbai-embed-large"
-response = _client.embeddings.create(
-    input=messages,
-    model=model_type,
-    **model_config_dict,
-)
-print(np.array([response.data[0].embedding]).shape)
+# _url = "http://127.0.0.1:11450/v1"
+# model_config_dict={}
+# _client = OpenAI(
+#     timeout=60,
+#     max_retries=3,
+#     base_url=_url,
+#     api_key="ollama",  # required but ignored
+# )
+# messages = "What is the name of the album with the most tracks?"
+# model_type = "mxbai-embed-large"
+# response = _client.embeddings.create(
+#     input=messages,
+#     model=model_type,
+#     **model_config_dict,
+# )
+# print(np.array([response.data[0].embedding]).shape)
+
+min_sleep_time = 0.1
+max_sleep_time = 0.4
+
+sleep_time = min_sleep_time + max_sleep_time*10/48
+
+print(sleep_time)

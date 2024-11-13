@@ -58,6 +58,7 @@ from camel.utils import (
     get_pydantic_object_schema,
     json_to_function_code,
 )
+from camel.utils import OpenAITokenCounter
 from .channel import Channel
 
 if TYPE_CHECKING:
@@ -208,8 +209,8 @@ class SciAgent_Async(BaseAgent):
 
         self.model_token_limit = token_limit or self.model_backend.token_limit
         context_creator = ScoreBasedContextCreator(
-            self.model_backend.token_counter,
-            self.model_token_limit,
+            OpenAITokenCounter(ModelType.GPT_3_5_TURBO),
+            4096,
         )
         # personality memory
         self.personality_memory: AgentMemory = memory or ChatHistoryMemory(

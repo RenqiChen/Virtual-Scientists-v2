@@ -25,7 +25,7 @@ def parse_arguments():
     parser.add_argument(
         "--port",
         type=list,
-        default=list(range(11434, 11466)),
+        default=list(range(11434, 11458)),
         # default=[11434],
         help="How many ports are used"
     )

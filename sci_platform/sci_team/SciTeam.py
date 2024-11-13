@@ -185,12 +185,15 @@ class Team:
                                                 reply.role_name + ': ' + reply.content + '\n'
                             format_special_guest_prompt = BaseMessage.make_user_message(role_name="user", content=special_guest_prompt)
                             # invite new team member to comment
-                            special_guest_reply = await platform.id2agent[scientist_index].step(format_special_guest_prompt)
-                            special_guest_reply = special_guest_reply.msg
-                            if special_guest_reply.content is not None:
+                            try:
+                                special_guest_reply = await platform.id2agent[scientist_index].step(format_special_guest_prompt)
+                                special_guest_reply = special_guest_reply.msg.content
+                            except:
+                                special_guest_reply = None
+                            if special_guest_reply is not None:
                                 said.append(scientist_index)
                                 self.teammate.append(scientist_index)
-                                self.log_dialogue(platform.id2agent[scientist_index].role_name, special_guest_reply.content)
+                                self.log_dialogue(platform.id2agent[scientist_index].role_name, special_guest_reply)
                                 teammate.append(platform.id2agent[scientist_index])
 
                 current_memories.append(reply)
@@ -276,6 +279,7 @@ class Team:
 
     async def generate_idea(self, platform):
         topic = self.topic
+        self.memory = []
         old_idea = None
         best_idea = None
         idea_list = []
@@ -299,7 +303,10 @@ class Team:
             selected_topics = "No topics."
             selected_topics_prompt = BaseMessage.make_user_message(role_name="user", content=selected_topics)
             query_vector = await teammate[0].embed_step(selected_topics_prompt)
-            query_vector = np.array([query_vector.data[0].embedding])
+            if query_vector == None:
+                query_vector = np.random.rand(1, 1024)
+            else:
+                query_vector = np.array([query_vector.data[0].embedding])
         paper_reference, cite_paper = platform.reference_paper(query_vector, platform.cite_number)
 
         for turn in range(group_max_discuss_iteration):
@@ -636,9 +643,7 @@ class Team:
                         self.abstract = old_abstract
                         break
             except:
-                raise ValueError(
-                f"Error in the generated abstract check: {comparison}"
-                )
+                abstract_use = False
             self.abstract = old_abstract
             print('Final Abstract:')
             print(self.abstract)
@@ -701,9 +706,8 @@ class Team:
                 title = strip_non_letters(title.split("Title")[1])
                 abstract = strip_non_letters(old_abstract.split("Abstract")[1])
             except:
-                raise ValueError(
-                f"Error in the generated abstract: {old_abstract}"
-                )
+                title = "No titles."
+                abstract = "No abstracts."
             file_dict={}
             file_dict['title']=title
             file_dict['abstract']=abstract
@@ -750,8 +754,8 @@ class Team:
             'abstract':self.abstract
         }
         # print(f'{"="*50} SAVE TEAM INFO {"="*50}')
-        with open(self.info_file, 'w') as json_file:
-            json.dump(team_info, json_file, indent=4)
+        # with open(self.info_file, 'w') as json_file:
+        #     json.dump(team_info, json_file, indent=4)
 
 if __name__=='__main__':
     team1 = Team('LPL')

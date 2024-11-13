@@ -49,9 +49,11 @@ salloc fast: 50000, big port
 df -Th /home/bingxing2/ailab/scxlab0066/
 
 OLLAMA_HOST=0.0.0.0:11434 ./ollama serve &
-
+sbatch -N 2 --gres=gpu:4 --qos=gpugpu -p vip_gpu_ailab -A ai4agr port2.sh
 
 ### multi-GPU
 sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr port1.sh
 
 sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr port2.sh
+
+sbatch -N 2 --gres=gpu:4 --qos=gpugpu -p vip_gpu_ailab -A ai4agr port2.sh

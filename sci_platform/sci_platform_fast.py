@@ -138,6 +138,7 @@ class Platform:
         inference_channel = Channel()
         embed_inference_channel = Channel()
         inference_channel_reviewer = Channel()
+        embed_inference_channel_reviewer = Channel()
         inference_configs = {
             'model_type': "llama3.1",
             'embed_model_type': None,
@@ -145,16 +146,20 @@ class Platform:
             'stop_tokens': None,
             'server_url': [
                 {
-                'host': 'paraai-n32-h-01-agent-218',
-                'ports': self.port[:16]
+                'host': 'paraai-n32-h-01-agent-173',
+                'ports': self.port[:12]
                 },
                 {
-                'host': 'paraai-n32-h-01-agent-188',
-                'ports': self.port[:16]
+                'host': 'paraai-n32-h-01-agent-151',
+                'ports': self.port[:12]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-216',
+                'ports': self.port[:12]
                 },
                 {
                 'host': '127.0.0.1',
-                'ports': self.port[16:]
+                'ports': self.port[12:]
                 },
           ]
         }
@@ -165,36 +170,20 @@ class Platform:
             'stop_tokens': None,
             'server_url': [
                 {
-                'host': 'paraai-n32-h-01-agent-218',
-                'ports': self.port[:16]
+                'host': 'paraai-n32-h-01-agent-173',
+                'ports': self.port[:12]
                 },
                 {
-                'host': 'paraai-n32-h-01-agent-188',
-                'ports': self.port[:16]
+                'host': 'paraai-n32-h-01-agent-151',
+                'ports': self.port[:12]
                 },
                 {
-                'host': '127.0.0.1',
-                'ports': self.port[16:]
-                },
-          ]
-        }
-        inference_reviewer_configs = {
-            'model_type': "llama3.1",
-            'embed_model_type': None,
-            'model_path': 'API',
-            'stop_tokens': None,
-            'server_url': [
-                {
-                'host': 'paraai-n32-h-01-agent-218',
-                'ports': self.port[:16]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-188',
-                'ports': self.port[:16]
+                'host': 'paraai-n32-h-01-agent-216',
+                'ports': self.port[:12]
                 },
                 {
                 'host': '127.0.0.1',
-                'ports': self.port[16:]
+                'ports': self.port[12:]
                 },
           ]
         }
@@ -208,7 +197,11 @@ class Platform:
         )
         self.infere_reviewer = InferencerManager(
             inference_channel_reviewer,
-            **inference_reviewer_configs,
+            **inference_configs,
+        )
+        self.embed_infere_reviewer = InferencerManager(
+            embed_inference_channel_reviewer,
+            **embed_inference_configs,
         )
 
         # model = ModelFactory.create(
@@ -224,7 +217,7 @@ class Platform:
         # self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
         self.agent_pool = self.init_agent_async(model, inference_channel, embed_inference_channel, self.author_info_dir, len(self.adjacency_matrix))
         # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
-        self.reviewer_pool = self.init_reviewer_async(model, inference_channel_reviewer, self.reviewer_num)
+        self.reviewer_pool = self.init_reviewer_async(model, inference_channel_reviewer, embed_inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
         for agent in self.agent_pool:
             self.id2agent[agent.role_name] = agent
@@ -261,7 +254,7 @@ class Platform:
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
-        self.author_dicts = read_txt_files_as_list(self.author_folder_path)
+        # self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
     def init_reviewer(self, agent_id, model):
@@ -273,7 +266,7 @@ class Platform:
         agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
     
-    def init_reviewer_async(self, model, channel, count):
+    def init_reviewer_async(self, model, channel, embed_channel, count):
         agents=[]
         inference_channel=channel
         for i in range(count):
@@ -282,7 +275,7 @@ class Platform:
                 role_name=name,
                 content=f'You are {name}. ' + Prompts.prompt_review_system,
             )
-            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, token_limit=4096)
+            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, embed_channel=embed_channel, token_limit=4096)
             agents.append(agent)
         return agents
 
@@ -471,6 +464,7 @@ class Platform:
         self.inference_task = asyncio.create_task(self.infere.run())
         self.embed_inference_task = asyncio.create_task(self.embed_infere.run())
         self.inference_task_reviewer = asyncio.create_task(self.infere_reviewer.run())
+        self.embed_inference_task_reviewer = asyncio.create_task(self.embed_infere_reviewer.run())
         # init team_pool
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
         self.team_pool = await self.select_coauthors()
@@ -494,8 +488,10 @@ class Platform:
         await self.infere.stop()
         await self.embed_infere.stop()
         await self.infere_reviewer.stop()
+        await self.embed_infere_reviewer.stop()
         # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
         await self.inference_task,self.inference_task_reviewer
+        await self.embed_inference_task,self.embed_inference_task_reviewer
         output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database.db"
         save2database(self.paper_dicts, output_dir)
     

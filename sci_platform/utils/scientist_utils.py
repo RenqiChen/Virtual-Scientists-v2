@@ -44,7 +44,7 @@ def extract_name_and_id(name: str) -> tuple[str, int]:
 def extract_scientist_names(name: str) -> list:
     """extract player name and id from a string"""
     try:
-        matches = re.findall(r"\b[Ss]cientist\d+\b", name)
+        matches = re.findall(r"\b[S]cientist\d+\b", name)
         # idx = int(re.search(r"[Pp]layer(\d+)", name).group(1)) - 1
         names = [f"{num}" for num in matches]
     except AttributeError:
