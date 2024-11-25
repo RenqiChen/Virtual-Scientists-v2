@@ -39,28 +39,29 @@ class Platform:
     def __init__(self,
                  model_configuration: str = './configs/model_configs.json',
                  agent_num: int = 1,
+                 ips: list = ['127.0.0.1'],
                  port: list = [11434],
-                #  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
+                 #  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
                  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG',
 
-                #  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
-                 author_folder_path: str = "/home/bingxing2/ailab/scxlab0066/SocialScience/books_OAG_3169_after",
-                # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/books_OAG_3169_after
+                 #  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
+                 author_folder_path: str = 'books_OAG_3169_after',
+                 # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/books_OAG_3169_after
 
-                #  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers", 
-                 paper_folder_path: str = '/home/bingxing2/ailab/scxlab0066/SocialScience/papers_OAG',
-                # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_OAG
+                 #  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers",
+                 paper_folder_path: str = 'papers_OAG',
+                 # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_OAG
 
-                #  future_paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers_future",
-                 future_paper_folder_path: str = "/home/bingxing2/ailab/scxlab0066/SocialScience/papers_future_OAG",
-                # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_future_OAG
+                 #  future_paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers_future",
+                 future_paper_folder_path: str = 'papers_future_OAG',
+                 # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_future_OAG
 
                  author_info_dir: str = 'authors',
-                #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
+                 #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
                  adjacency_matrix_dir: str = 'data_from_2010to2020_gt_200_citation/3169_authors_w_15_degrees_15_papers',
                  agent_model_config_name: str = 'ollama_llama3.1_8b',
                  review_model_config_name: str = 'ollama_llama3.1_70b',
-                 knowledgeBank_config_dir: str = "./configs/knowledge_config.json",
+                 knowledgeBank_config_dir: str = './configs/knowledge_config.json',
                  log_dir: str = 'logs',
                  info_dir: str = "team_info",
                  group_max_discuss_iteration: int = 2, # 6， 7
@@ -69,7 +70,7 @@ class Platform:
                  team_limit: int = 2,
                  check_iter: int = 5,
                  review_num: int = 2,
-                 max_teammember: int = 3, 
+                 max_teammember: int = 3,
                  cite_number: int = 8,
                  default_mark: int = 4,
                  skip_check: bool = False,
@@ -77,12 +78,19 @@ class Platform:
                  begin_state: int = 1,
                  inference_configs: dict[str, Any] | None = None,
                  ):
+
+        author_folder_path = os.path.join(root_dir, author_folder_path)
+        paper_folder_path = os.path.join(root_dir, paper_folder_path)
+        future_paper_folder_path = os.path.join(root_dir, future_paper_folder_path)
+        adjacency_matrix_dir = os.path.join(root_dir, adjacency_matrix_dir)
+
         self.agent_num = agent_num
         self.port = port
+        self.ips = ips
         self.paper_folder_path = paper_folder_path
         self.paper_future_folder_path = future_paper_folder_path
         self.author_info_dir = os.path.join(author_folder_path,'author_{}.txt')
-        self.adjacency_matrix_dir = os.path.join(root_dir, adjacency_matrix_dir)
+        self.adjacency_matrix_dir = adjacency_matrix_dir
         self.group_max_discuss_iteration = group_max_discuss_iteration
         self.recent_n_team_mem_for_retrieve = recent_n_team_mem_for_retrieve
         self.recent_n_agent_mem_for_retrieve = recent_n_agent_mem_for_retrieve
@@ -151,64 +159,14 @@ class Platform:
             'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [
-                {
-                'host': 'paraai-n32-h-01-agent-173',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-151',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-204',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-65',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-112',
-                'ports': self.port[:12]
-                },
-                {
-                'host': '127.0.0.1',
-                'ports': self.port[12:]
-                },
-          ]
+            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
         }
         embed_inference_configs = {
             'model_type': 'llama3.1',
             'embed_model_type': "mxbai-embed-large",
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [
-                {
-                'host': 'paraai-n32-h-01-agent-173',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-151',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-204',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-65',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-112',
-                'ports': self.port[:12]
-                },
-                {
-                'host': '127.0.0.1',
-                'ports': self.port[12:]
-                },
-          ]
+            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
         }
         self.infere = InferencerManager(
             inference_channel,
@@ -262,19 +220,19 @@ class Platform:
 
         # paper embedding list
         # cpu_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index.index")  # 加载索引
-        cpu_index = faiss.read_index("/home/bingxing2/ailab/scxlab0066/SocialScience/faiss_index_OAG.index")
+        cpu_index = faiss.read_index(os.path.join(root_dir, 'faiss_index_OAG.index'))
         # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/faiss_index_OAG.index
 
         res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
 
-        cpu_authors_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_authors.index")  # 加载索引
-        
+        cpu_authors_index = faiss.read_index(os.path.join(root_dir, 'faiss_index_authors.index'))  # 加载索引
+
         authors_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_authors_index = faiss.index_cpu_to_gpu(authors_res, 0, cpu_authors_index)  # 将索引移到 GPU
 
         # cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
-        cpu_future_index = faiss.read_index("/home/bingxing2/ailab/scxlab0066/SocialScience/faiss_index_OAG_future.index")
+        cpu_future_index = faiss.read_index(os.path.join(root_dir, 'faiss_index_OAG_future.index'))
         # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/faiss_index_OAG_future.index
 
         future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
@@ -292,7 +250,7 @@ class Platform:
         )
         agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
-    
+
     def init_reviewer_async(self, model, channel, embed_channel, count):
         agents=[]
         inference_channel=channel
@@ -318,7 +276,7 @@ class Platform:
         agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
         return agent
-    
+
     def init_agent_async(self, model, channel, embed_channel, information_path, count):
         agents = []
         inference_channel = channel
@@ -345,11 +303,11 @@ class Platform:
             return
         sys_prompt = scientists[agent_index].orig_sys_message.content + Prompts.role
         hint = BaseMessage.make_user_message(role_name="user",
-                                        content=Prompts.ask_choice.format_map(
-                                            {"Scientist_name": scientists[agent_index].role_name,
-                                            "All_team": team_description(self.team_pool[agent_index],
-                                                                        self.over_state)})
-                                        )
+                                             content=Prompts.ask_choice.format_map(
+                                                 {"Scientist_name": scientists[agent_index].role_name,
+                                                  "All_team": team_description(self.team_pool[agent_index],
+                                                                               self.over_state)})
+                                             )
         x = await scientists[agent_index].step(hint)
         x= x.msg
         self.team_pool[agent_index][0].log_dialogue('user', hint.content)
@@ -464,7 +422,7 @@ class Platform:
             paper_reference = paper_reference+"Title: "+paper_index['title']+"\n"
             paper_reference = paper_reference+"Abstract: "+paper_index['abstract']+"}"+"\n"
         return paper_reference, I[0]
-    
+
     def reference_author(self, key_string, cite_number):
         query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
         query_vector = np.array([query_vector['embedding']])

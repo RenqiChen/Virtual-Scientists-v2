@@ -3,6 +3,7 @@ from utils.scientist_utils import read_txt_files_as_dict
 import os
 import argparse
 import asyncio
+from configs import deploy_config
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Run experiments")
     # parser.add_argument(
@@ -15,51 +16,70 @@ def parse_arguments():
     #     action="store_true",
     #     help="Skip novelty check and use existing ideas",
     # )
+    # root direction
+    parser.add_argument(
+        "--root_dir",
+        type=str,
+        default=deploy_config.root_dir,
+        help="Dataset location.",
+    )
     # how many scientists
     parser.add_argument(
         "--agent_num",
         type=int,
-        # default=3169,
-        default=2000,
+        # default=2000,
+        default=deploy_config.agent_num,
         help="How many scientist leaders.",
+    )
+    parser.add_argument(
+        "--ips",
+        type=list,
+        # default=2000,
+        default=deploy_config.ips,
+        help="How many ips are used.",
     )
     parser.add_argument(
         "--port",
         type=list,
-        default=list(range(11434, 11458)),
-        # default=[11434],
-        help="How many ports are used"
+        # default=list(range(11434, 11458)),
+        default=deploy_config.port,
+        help="How many ports are used."
     )
     # how many runs
     parser.add_argument(
         "--runs",
         type=int,
-        default=1,
+        # default = 1
+        default=deploy_config.runs,
         help="Calculate average on how many runs.",
     )
     # team limit
     parser.add_argument(
         "--team_limit",
         type=int,
-        default=4,
+        # default = 4
+        default=deploy_config.team_limit,
         help="Max number of teams for a scientist.",
     )
     parser.add_argument(
         "--max_discuss_iteration",
         type=int,
-        default=1,
+        # default = 1
+        default=deploy_config.max_discuss_iteration,
         help="Max discuss iteration.",
     )
     parser.add_argument(
         "--max_team_member",
         type=int,
-        default=6,
+        # default = 6
+        default=deploy_config.max_team_member,
         help="Max team mamber of a team, actual team size is max_team_member.",
     )
     parser.add_argument(
         "--epochs",
         type=int,
-        default=50,
+        # default = 50
+        default=deploy_config.epochs,
         help="Epochs.",
     )
 
@@ -78,6 +98,7 @@ if __name__ == '__main__':
     while end==False:
         print(f'{len(os.listdir(args.save_dir))} files are created...')
         platform_example = Platform(
+            root_dir = args.root_dir,
             agent_num=args.agent_num,
             port=args.port,
             team_limit = args.team_limit,
