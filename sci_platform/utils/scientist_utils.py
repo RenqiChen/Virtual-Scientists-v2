@@ -309,6 +309,7 @@ def read_txt_files_as_dict(folder_path):
                     file_dict['id'] = id
                     file_dict['authors'] = None
                     file_dict['cite_papers'] = None
+                    file_dict['reviews'] = None
                 except json.JSONDecodeError:
                     print(f"文件 {filename} 的内容不是有效的JSON格式，跳过该文件。")
                     continue

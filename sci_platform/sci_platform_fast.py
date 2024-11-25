@@ -42,12 +42,19 @@ class Platform:
                  port: list = [11434],
                 #  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
                  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG',
+
                 #  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
                  author_folder_path: str = "/home/bingxing2/ailab/scxlab0066/SocialScience/books_OAG_3169_after",
+                # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/books_OAG_3169_after
+
                 #  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers", 
                  paper_folder_path: str = '/home/bingxing2/ailab/scxlab0066/SocialScience/papers_OAG',
+                # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_OAG
+
                 #  future_paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers_future",
                  future_paper_folder_path: str = "/home/bingxing2/ailab/scxlab0066/SocialScience/papers_future_OAG",
+                # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_future_OAG
+
                  author_info_dir: str = 'authors',
                 #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
                  adjacency_matrix_dir: str = 'data_from_2010to2020_gt_200_citation/3169_authors_w_15_degrees_15_papers',
@@ -154,7 +161,15 @@ class Platform:
                 'ports': self.port[:12]
                 },
                 {
-                'host': 'paraai-n32-h-01-agent-216',
+                'host': 'paraai-n32-h-01-agent-204',
+                'ports': self.port[:12]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-65',
+                'ports': self.port[:12]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-112',
                 'ports': self.port[:12]
                 },
                 {
@@ -178,7 +193,15 @@ class Platform:
                 'ports': self.port[:12]
                 },
                 {
-                'host': 'paraai-n32-h-01-agent-216',
+                'host': 'paraai-n32-h-01-agent-204',
+                'ports': self.port[:12]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-65',
+                'ports': self.port[:12]
+                },
+                {
+                'host': 'paraai-n32-h-01-agent-112',
                 'ports': self.port[:12]
                 },
                 {
@@ -240,6 +263,8 @@ class Platform:
         # paper embedding list
         # cpu_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index.index")  # 加载索引
         cpu_index = faiss.read_index("/home/bingxing2/ailab/scxlab0066/SocialScience/faiss_index_OAG.index")
+        # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/faiss_index_OAG.index
+
         res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
 
@@ -250,6 +275,8 @@ class Platform:
 
         # cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
         cpu_future_index = faiss.read_index("/home/bingxing2/ailab/scxlab0066/SocialScience/faiss_index_OAG_future.index")
+        # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/faiss_index_OAG_future.index
+
         future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
@@ -373,8 +400,8 @@ class Platform:
             x = x.msg
             if pattern.search(extract_between_json_tags(x.content, num=1)):
                 team_index.append(agent.role_name)
-            self.team_pool[agent_index][0].log_dialogue('user', hint.content)
-            self.team_pool[agent_index][0].log_dialogue(agent.role_name, x.content)
+            # self.team_pool[agent_index][0].log_dialogue('user', hint.content)
+            # self.team_pool[agent_index][0].log_dialogue(agent.role_name, x.content)
 
         team_dic = Team(team_name = str(agent_index+1)+','+str(len(self.team_pool[agent_index])+1),
                         log_dir = self.log_dir,
@@ -417,11 +444,13 @@ class Platform:
             agent_list.append(agent_id.role_name)
         return agent_list
 
-    def reference_paper(self, query_vector, cite_number):
+    def reference_paper(self, query_vector, cite_number, epoch):
         D, I = self.gpu_index.search(query_vector, cite_number)
 
         paper_use = []
         for id in range(len(I[0])):
+            if epoch<=self.paper_dicts[I[0][id]]['year']:
+                continue
             paper_title = self.paper_dicts[I[0][id]]['title']
             paper_abstract = self.paper_dicts[I[0][id]]['abstract']
             paper_index = {}
@@ -492,6 +521,6 @@ class Platform:
         # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
         await self.inference_task,self.inference_task_reviewer
         await self.embed_inference_task,self.embed_inference_task_reviewer
-        output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database.db"
+        output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database_large.db"
         save2database(self.paper_dicts, output_dir)
     

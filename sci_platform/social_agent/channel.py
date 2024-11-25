@@ -46,16 +46,14 @@ class Channel:
         return message_id
 
     async def read_from_send_queue(self, message_id):
-        min_sleep_time = 0.1
-        max_sleep_time = 0.2
-        sleep_time = min_sleep_time + max_sleep_time*len(self.send_dict.dict)/48
+        min_sleep_time = 0.2
+        max_sleep_time = 0.3
+        sleep_time = min_sleep_time + max_sleep_time*len(self.send_dict.dict)/72
         while True:
             if message_id in await self.send_dict.keys():
                 # 尝试获取消息
                 message = await self.send_dict.pop(message_id, None)
                 if message:
                     return message  # 返回找到的消息
-            sleep_time = min_sleep_time + max_sleep_time*len(self.send_dict.dict)/48
-            if sleep_time > 0.5:
-                raise TimeoutError(f"Message {message_id} not found in send_dict")
+            sleep_time = min_sleep_time + max_sleep_time*len(self.send_dict.dict)/72
             await asyncio.sleep(sleep_time)  # 暂时挂起，避免紧密循环
