@@ -19,7 +19,8 @@ def parse_arguments():
     parser.add_argument(
         "--agent_num",
         type=int,
-        default=3169,
+        # default=3169,
+        default=2000,
         help="How many scientist leaders.",
     )
     parser.add_argument(
@@ -40,7 +41,7 @@ def parse_arguments():
     parser.add_argument(
         "--team_limit",
         type=int,
-        default=3,
+        default=4,
         help="Max number of teams for a scientist.",
     )
     parser.add_argument(
@@ -52,13 +53,13 @@ def parse_arguments():
     parser.add_argument(
         "--max_team_member",
         type=int,
-        default=5,
+        default=6,
         help="Max team mamber of a team, actual team size is max_team_member.",
     )
     parser.add_argument(
         "--epochs",
         type=int,
-        default=5,
+        default=50,
         help="Epochs.",
     )
 
