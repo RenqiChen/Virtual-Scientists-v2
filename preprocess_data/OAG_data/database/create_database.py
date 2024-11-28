@@ -376,14 +376,6 @@ if __name__=='__main__':
     # # filter author info
     # filter_authors(cursor, data_dir)
 
-    # # retrieve example
-    # v = 'id'
-    # cursor.execute(f"SELECT * FROM authors WHERE id == '{v}'")
-    # # Fetch and print the results (if needed)
-    # rows = cursor.fetchall()
-    # for row in rows:
-    #     print(row)
-    #
     # # fetch all
     # cursor.execute(f"SELECT * FROM papers")
     # all_papers = cursor.fetchall()
