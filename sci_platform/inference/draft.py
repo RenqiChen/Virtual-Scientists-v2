@@ -84,7 +84,3 @@ class InferencerManager:
     async def stop(self):
         for thread in self.threads:
             thread.alive = False
-
-    async def start(self):
-        for thread in self.threads:
-            thread.alive = True

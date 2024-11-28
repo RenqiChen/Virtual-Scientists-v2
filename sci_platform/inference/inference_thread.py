@@ -68,7 +68,7 @@ class InferenceThread:
                 except Exception as e:
                     print('Receive Response Exception:', str(e))
                     if self.embed_model_type==None:
-                        self.shared_memory.Response = "No response."
+                        self.shared_memory.Response = "No response_embedding."
                     else:
                         self.shared_memory.Response = None
                 self.shared_memory.Done = True

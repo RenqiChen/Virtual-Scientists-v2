@@ -169,6 +169,7 @@ class SciAgent_Async(BaseAgent):
         )
         self.inference_channel = channel
         self.embed_inference_channel = embed_channel
+        self.input_message = None
         self.model_backend: BaseModelBackend = (
             model
             if model is not None
@@ -212,6 +213,7 @@ class SciAgent_Async(BaseAgent):
             OpenAITokenCounter(ModelType.GPT_3_5_TURBO),
             4096,
         )
+        self.token_counter = OpenAITokenCounter(ModelType.GPT_3_5_TURBO)
         # personality memory
         self.personality_memory: AgentMemory = memory or ChatHistoryMemory(
             context_creator, window_size=message_window_size
@@ -484,7 +486,15 @@ class SciAgent_Async(BaseAgent):
             while True:
                 # Check if token has exceeded
                 try:
-                    openai_messages, num_tokens = self.memory.get_context()
+                    if use_memory:
+                        openai_messages, num_tokens = self.memory.get_context()
+                    else:
+                        openai_messages = [input_message.to_openai_message(
+                            role_at_backend=OpenAIBackendRole.USER
+                        )]
+                        num_tokens = self.token_counter.count_tokens_from_messages(
+                            openai_messages
+                        )
                 except RuntimeError as e:
                     return self._step_token_exceed(
                         e.args[1], tool_call_records, "max_tokens_exceeded"
@@ -773,11 +783,16 @@ class SciAgent_Async(BaseAgent):
     ]:
         r"""Internal function for agent step model response."""
         personality_info, info_num_tokens = self.personality_memory.get_context()
+        if num_tokens==0:
+            print("num_tokens is 0")
+            print(openai_messages)
+            print("input_message")
+            print(self.input_message)
         format_input = personality_info + openai_messages
         num_tokens += info_num_tokens
         # Obtain the model's response
         message_id = await self.inference_channel.write_to_receive_queue(
-            openai_messages)
+            format_input)
         message_id, content = await self.inference_channel.read_from_send_queue(message_id)
 
         response = content

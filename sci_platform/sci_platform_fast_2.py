@@ -76,7 +76,7 @@ class Platform:
                  over_state: int = 7,
                  begin_state: int = 1,
                  inference_configs: dict[str, Any] | None = None,
-                 explore: str = 'gaussian',  # 'uniform' or 'gaussian'
+                 explore: str = 'uniform',
                  ):
         self.agent_num = agent_num
         self.port = port
@@ -367,7 +367,7 @@ class Platform:
         # use prompts to select scientists
         scientist = scientists[agent_index].role_name
         name = int(scientist[9:])
-        arr = self.adjacency_matrix[name, :].copy()
+        arr = self.adjacency_matrix[name, :]
         # uniform distribution
         if explore == 'uniform':
             arr += 1
@@ -497,15 +497,11 @@ class Platform:
         return author_reference
 
     async def team_running(self, epoch, leader_index):
-        leader_team=[]
         for team_index in range(len(self.team_pool[leader_index])):
             self.team_pool[leader_index][team_index].epoch = epoch
             await self.team_pool[leader_index][team_index].action_excution(self)
-            if self.team_pool[leader_index][team_index].state != self.over_state:
-                leader_team.append(self.team_pool[leader_index][team_index])
-            # if self.team_pool[leader_index][team_index].state == self.over_state:
-            #     self.team_pool[leader_index][team_index].save_team_info()
-        self.team_pool[leader_index] = leader_team
+            if self.team_pool[leader_index][team_index].state == self.over_state:
+                self.team_pool[leader_index][team_index].save_team_info()
 
     async def running(self, epochs):
         # 创建调度任务
@@ -515,9 +511,46 @@ class Platform:
         self.embed_inference_task_reviewer = asyncio.create_task(self.embed_infere_reviewer.run())
         # init team_pool
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
-        self.team_pool = await self.select_coauthors(self.explore)
+        self.team_pool = await self.select_coauthors()
+        await self.infere.stop()
+        await self.embed_infere.stop()
+        await self.infere_reviewer.stop()
+        await self.embed_infere_reviewer.stop()
+        # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
+        await self.inference_task,self.inference_task_reviewer
+        await self.embed_inference_task,self.embed_inference_task_reviewer
+        self.inference_task.cancel()
+        self.embed_inference_task.cancel()
+        self.inference_task_reviewer.cancel()
+        self.embed_inference_task_reviewer.cancel()
 
         for epoch in range(epochs):
+            # await self.infere.start()
+            # await self.embed_infere.start()
+            # await self.infere_reviewer.start() 
+            # await self.embed_infere_reviewer.start()
+            self.infere = InferencerManager(
+                self.inference_channel,
+                **self.inference_configs,
+            )
+            self.embed_infere = InferencerManager(
+                self.embed_inference_channel,
+                **self.embed_inference_configs,
+            )
+            self.infere_reviewer = InferencerManager(
+                self.inference_channel_reviewer,
+                **self.inference_configs,
+            )
+            self.embed_infere_reviewer = InferencerManager(
+                self.embed_inference_channel_reviewer,
+                **self.embed_inference_configs,
+            )
+
+            # 创建调度任务
+            self.inference_task = asyncio.create_task(self.infere.run())
+            self.embed_inference_task = asyncio.create_task(self.embed_infere.run())
+            self.inference_task_reviewer = asyncio.create_task(self.infere_reviewer.run())
+            self.embed_inference_task_reviewer = asyncio.create_task(self.embed_infere_reviewer.run())
             # state 7 is an over
             # 1. select coauthors for state 1
             # 2. select topics for state 2
@@ -532,16 +565,20 @@ class Platform:
             await asyncio.gather(*leader_tasks)  # 并行执行所有任务
 
             print(f'{"="*50} Epoch:{epoch} | Begin Select Authors {"="*50}')
-            self.team_pool = await self.select_coauthors(self.explore)
+            self.team_pool = await self.select_coauthors()
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
 
-        await self.infere.stop()
-        await self.embed_infere.stop()
-        await self.infere_reviewer.stop()
-        await self.embed_infere_reviewer.stop()
-        # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
-        await self.inference_task,self.inference_task_reviewer
-        await self.embed_inference_task,self.embed_inference_task_reviewer
+            await self.infere.stop()
+            await self.embed_infere.stop()
+            await self.infere_reviewer.stop()
+            await self.embed_infere_reviewer.stop()
+            # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
+            await self.inference_task,self.inference_task_reviewer
+            await self.embed_inference_task,self.embed_inference_task_reviewer
+            self.inference_task.cancel()
+            self.embed_inference_task.cancel()
+            self.inference_task_reviewer.cancel()
+            self.embed_inference_task_reviewer.cancel()
         output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database_large.db"
         save2database(self.paper_dicts, output_dir)
         # save self.adjacency_matrix

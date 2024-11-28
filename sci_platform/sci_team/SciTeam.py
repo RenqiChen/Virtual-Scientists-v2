@@ -461,7 +461,7 @@ class Team:
                     reply = await agent.step(format_idea_novelty_prompt)
                     reply = reply.msg.content
                 except:
-                    reply = "```No Response```"
+                    reply = "```No Response_novelty```"
                 # self.log_dialogue('user', idea_novelty_prompt)
                 self.log_dialogue(agent.role_name, reply)
                 old_idea = extract_between_json_tags(reply, num=1)
