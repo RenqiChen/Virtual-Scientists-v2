@@ -100,6 +100,7 @@ if __name__ == '__main__':
         platform_example = Platform(
             root_dir = args.root_dir,
             agent_num=args.agent_num,
+            ips=args.ips,
             port=args.port,
             team_limit = args.team_limit,
             group_max_discuss_iteration = args.max_discuss_iteration,

@@ -27,7 +27,9 @@ from utils.scientist_utils import (
     top_three_indices,
     extract_first_number,
     most_frequent_element,
-    Color
+    Color,
+    find_best_match,
+    filter_out_number_n_symbol
 )
 
 class Team:
@@ -676,6 +678,7 @@ class Team:
                 self.state=6
 
     async def generate_review(self, platform):
+        teammate = platform.id_to_agent(self.teammate)
         # paper reviewer by reviewer
         print('current reviewing paper from {}'.format(self.teammate))
         old_abstract = self.abstract
@@ -708,6 +711,20 @@ class Team:
             except:
                 title = "No titles."
                 abstract = "No abstracts."
+            # add discipline
+            disciplines = ['art', 'biology', 'business', 'computer science', 'chemistry', 'economics', 'engineering', 'environmental science',
+                'geography', 'geology', 'history', 'materials science', 'mathematics', 'medicine', 'philosophy', 'physics', 'political science',
+                'psychology', 'sociology']
+            try:
+                discipline_prompt = Prompts.prompt_discipline.replace('ABSTRACT', abstract)
+                format_discipline_prompt = BaseMessage.make_user_message(role_name="user", content=discipline_prompt)
+                reply = await teammate[0].step(format_discipline_prompt)
+                reply = reply.msg.content.lower()
+                discipline = find_best_match(filter_out_number_n_symbol(reply), disciplines)
+            except:
+                discipline = 'computer science'
+            print('discipline:')
+            print(discipline)
             file_dict={}
             file_dict['title']=title
             file_dict['abstract']=abstract
@@ -717,6 +734,7 @@ class Team:
             file_dict['authors'] = self.teammate
             file_dict['cite_papers'] = self.citation_id
             file_dict['reviews'] = mark_sum
+            file_dict['discipline'] = discipline
             platform.paper_dicts.append(file_dict)
             # add embedding into list
             embedding_list = []

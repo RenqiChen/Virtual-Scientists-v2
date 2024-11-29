@@ -350,4 +350,37 @@ class Prompts:
     ```
     """
 
+    prompt_discipline = """
+    Given the following abstract of a paper, identify the most likely one discipline from the list below:
+    
+    Disciplines:
+    1. Art
+    2. Biology
+    3. Business
+    4. Computer Science
+    5. Chemistry
+    6. Economics
+    7. Engineering
+    8. Environmental science
+    9. Geography
+    10. Geology
+    11. History
+    12. Materials Science
+    13. Mathematics
+    14. Medicine
+    15. Philosophy
+    16. Physics
+    17. Political Science
+    18. Psychology
+    19. Sociology
+    
+    Paper's Abstract:
+    ABSTRACT
+    
+    Reply Format:
+    [Selected Discipline]
+    
+    Only one discipline should be selected! Do not reply anything else!!!!!
+    """
+
     

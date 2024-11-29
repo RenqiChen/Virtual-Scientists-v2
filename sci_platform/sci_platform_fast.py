@@ -77,7 +77,8 @@ class Platform:
                  over_state: int = 7,
                  begin_state: int = 1,
                  inference_configs: dict[str, Any] | None = None,
-                 explore: str = 'gaussian', # 'uniform' or 'gaussian'
+                 explore: str = 'gaussian', # 'uniform' or 'gaussian' or 'history'
+                 team_organization: str = 'exponential', # 'uniform' or 'gaussian' or 'exponential'
                  ):
 
         author_folder_path = os.path.join(root_dir, author_folder_path)
@@ -118,6 +119,7 @@ class Platform:
         self.info_dir = info_dir
         self.author_folder_path = author_folder_path
         self.explore = explore
+        self.team_organization = team_organization
 
         # for quality, the team of one member will think more times
         self.think_times = max_teammember+1
@@ -131,7 +133,7 @@ class Platform:
         # self.adjacency_matrix = np.loadtxt(
         #     '{}/{}-hop_adj_matrix.txt'.format(self.adjacency_matrix_dir, self.degree_int2word[hop_num-1]), dtype=int)
         self.adjacency_matrix = np.loadtxt(
-            '{}/weight_matrix.txt'.format(self.adjacency_matrix_dir), dtype=int)
+            '{}/weight_matrix.txt'.format(self.adjacency_matrix_dir), dtype=float)
 
         # check if agent_num is valid
         if self.agent_num is None:
@@ -161,64 +163,14 @@ class Platform:
             'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [
-                {
-                'host': 'paraai-n32-h-01-agent-173',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-148',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-171',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-65',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-112',
-                'ports': self.port[:12]
-                },
-                {
-                'host': '127.0.0.1',
-                'ports': self.port[12:]
-                },
-          ]
+            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
         }
         self.embed_inference_configs = {
             'model_type': 'llama3.1',
             'embed_model_type': "mxbai-embed-large",
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [
-                {
-                'host': 'paraai-n32-h-01-agent-173',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-148',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-171',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-65',
-                'ports': self.port[:12]
-                },
-                {
-                'host': 'paraai-n32-h-01-agent-112',
-                'ports': self.port[:12]
-                },
-                {
-                'host': '127.0.0.1',
-                'ports': self.port[12:]
-                },
-          ]
+            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
         }
         self.infere = InferencerManager(
             self.inference_channel,
@@ -348,7 +300,7 @@ class Platform:
 
         return agents
 
-    async def select_single(self, agent_index, explore='uniform'):
+    async def select_single(self, agent_index):
         scientists = self.agent_pool[:self.agent_num]
         # avoid too many teams
         if count_team(self.team_pool[agent_index], self.over_state)>=self.team_limit:
@@ -377,21 +329,36 @@ class Platform:
         name = int(scientist[9:])
         arr = self.adjacency_matrix[name, :].copy()
         # uniform distribution
-        if explore == 'uniform':
+        if self.explore == 'uniform':
             arr += 1
         # sample from gaussian distribution
-        else:
-            random_values = np.random.normal(loc=1, scale=1, size=self.adjacency_matrix.shape)
+        elif self.explore == 'gaussian':
+            random_values = np.random.normal(loc=1, scale=1, size=arr.shape)
             random_values = np.abs(random_values)
             random_values[random_values > 10] = 10
             arr += random_values
+        else:
+            # extract the index that is not 0, 2-jump
+            arr_2 = arr[arr != 0].copy()
+            for i in range(len(arr_2)):
+                for j in range(len(self.adjacency_matrix)):
+                    arr[j] = arr[j] + 0.1*self.adjacency_matrix[i, j]
         arr[agent_index] = 0
         probabilities = arr / np.sum(arr)
 
-        # team member follows the distribution
-        team_sample = np.random.normal(loc=self.max_teammember, scale=1)
-        team_sample_int = int(np.round(team_sample))
-        team_size = np.clip(team_sample_int, 3, self.max_teammember+2)
+        if self.team_organization == 'uniform':
+            team_size = self.max_teammember
+        elif self.team_organization == 'gaussian':
+            # team member follows the distribution
+            team_sample = np.random.normal(loc=self.max_teammember, scale=1)
+            team_sample_int = int(np.round(team_sample))
+            team_size = np.clip(team_sample_int, 3, 2*self.max_teammember-3)
+        else:
+            lambda_val = 0.25  
+            scale = 1 / lambda_val  
+            team_sample = np.random.exponential(scale, 1)+3
+            team_sample_int = np.floor(team_sample).astype(int)
+            team_size = np.clip(team_sample_int, 3, 2*self.max_teammember+3)
         
         selected_indices = np.random.choice(len(arr), size=team_size, p=probabilities, replace=False)
 
@@ -445,12 +412,12 @@ class Platform:
             role_name="User"))
         self.team_pool[agent_index][0].log_dialogue(scientists[agent_index].role_name, summary_select.msg.content)
 
-    async def select_coauthors(self,explore='uniform'):
+    async def select_coauthors(self,):
         scientists = self.agent_pool[:self.agent_num]
         # decide whether the scientist wants to find partners
         select_tasks = []
         for agent_index in range(len(scientists)):
-            select_tasks.append(self.select_single(agent_index, explore=explore))
+            select_tasks.append(self.select_single(agent_index))
         await asyncio.gather(*select_tasks)  # 并行执行所有任务
         team_list = self.team_pool
         return team_list
@@ -523,7 +490,7 @@ class Platform:
         self.embed_inference_task_reviewer = asyncio.create_task(self.embed_infere_reviewer.run())
         # init team_pool
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
-        self.team_pool = await self.select_coauthors(self.explore)
+        self.team_pool = await self.select_coauthors()
 
         for epoch in range(epochs):
             # state 7 is an over
@@ -540,7 +507,7 @@ class Platform:
             await asyncio.gather(*leader_tasks)  # 并行执行所有任务
 
             print(f'{"="*50} Epoch:{epoch} | Begin Select Authors {"="*50}')
-            self.team_pool = await self.select_coauthors(self.explore)
+            self.team_pool = await self.select_coauthors()
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
 
         await self.infere.stop()

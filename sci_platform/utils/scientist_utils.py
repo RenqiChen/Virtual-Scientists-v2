@@ -11,6 +11,7 @@ import sqlite3
 import re
 import os
 import sys
+import difflib
 
 sys.path.append('../camel-master')
 # from agentscope.service import (
@@ -310,6 +311,7 @@ def read_txt_files_as_dict(folder_path):
                     file_dict['authors'] = None
                     file_dict['cite_papers'] = None
                     file_dict['reviews'] = None
+                    file_dict['discipline'] = None
                 except json.JSONDecodeError:
                     print(f"文件 {filename} 的内容不是有效的JSON格式，跳过该文件。")
                     continue
@@ -523,3 +525,14 @@ class Color:
     MAGENTA = "\033[35m"
     CYAN = "\033[36m"
     WHITE = "\033[37m"
+
+def filter_out_number_n_symbol(text):
+    filtered_text = re.sub(r'[^\w\s,&]', '', text)  # Remove symbols
+    filtered_text = ''.join([char for char in filtered_text if not char.isdigit()])  # Remove numbers
+    filtered_text = filtered_text.strip()  # Remove leading/trailing whitespace
+    return filtered_text
+
+def find_best_match(target, options, cutoff = 0.0):
+    # Find the best match
+    best_match = difflib.get_close_matches(target, options, n=1, cutoff=cutoff)
+    return best_match[0] if best_match else None
