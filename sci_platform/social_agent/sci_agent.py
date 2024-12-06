@@ -170,20 +170,16 @@ class SciAgent_Async(BaseAgent):
         self.inference_channel = channel
         self.embed_inference_channel = embed_channel
         self.input_message = None
-        self.model_backend: BaseModelBackend = (
-            model
-            if model is not None
-            else ModelFactory.create(
-                model_platform=ModelPlatformType.OPENAI,
-                model_type=ModelType.GPT_4O_MINI,
-                model_config_dict=ChatGPTConfig().as_dict(),
-            )
-        )
+
+        self.model_config_dict = {
+            "temperature": 0.4,
+        }
+
         self.output_language: Optional[str] = output_language
         if self.output_language is not None:
             self.set_output_language(self.output_language)
 
-        self.model_type: ModelType = self.model_backend.model_type
+        self.model_type: ModelType = "llama3.1"
 
         # tool registration
         external_tools = external_tools or []
@@ -200,15 +196,9 @@ class SciAgent_Async(BaseAgent):
         # the tools set from `ChatAgent` will be used.
         # This design simplifies the interface while retaining tool-running
         # capabilities for `BaseModelBackend`.
-        if all_tools and not self.model_backend.model_config_dict.get("tools"):
-            tool_schema_list = [
-                tool.get_openai_tool_schema() for tool in all_tools
-            ]
-            self.model_backend.model_config_dict['tools'] = tool_schema_list
-            self.tool_schema_list = tool_schema_list
-        self.model_config_dict = self.model_backend.model_config_dict
+        self.model_config_dict = self.model_config_dict
 
-        self.model_token_limit = token_limit or self.model_backend.token_limit
+        self.model_token_limit = token_limit
         context_creator = ScoreBasedContextCreator(
             OpenAITokenCounter(ModelType.GPT_3_5_TURBO),
             4096,
@@ -470,15 +460,6 @@ class SciAgent_Async(BaseAgent):
                 or isinstance(self.model_type, str)
                 and "lama" in self.model_type
         ):
-            if self.model_backend.model_config_dict.get("tools", None):
-                tool_prompt = self._generate_tool_prompt(self.tool_schema_list)
-
-                tool_sys_msg = BaseMessage.make_assistant_message(
-                    role_name="Assistant",
-                    content=tool_prompt,
-                )
-
-                self.update_memory(tool_sys_msg, OpenAIBackendRole.SYSTEM)
 
             self.update_memory(input_message, OpenAIBackendRole.USER)
 

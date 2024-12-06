@@ -145,15 +145,6 @@ class Platform:
         # with open('{}/agentID2authorID.json'.format(self.adjacency_matrix_dir), 'r') as file:
         #     self.agentID2authorID = json.load(file)
 
-        # init model
-        model = ModelFactory.create(
-            model_platform=ModelPlatformType.OLLAMA,
-            model_type="llama3.1",
-            embed_model_type = "mxbai-embed-large",
-            url="http://127.0.0.1:11434/v1",
-            model_config_dict={"temperature": 0.4},
-        )
-
         self.inference_channel = Channel()
         self.embed_inference_channel = Channel()
         self.inference_channel_reviewer = Channel()
@@ -200,9 +191,9 @@ class Platform:
 
         # init agent pool
         # self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
-        self.agent_pool = self.init_agent_async(model, self.inference_channel, self.embed_inference_channel, self.author_info_dir, len(self.adjacency_matrix))
+        self.agent_pool = self.init_agent_async(self.inference_channel, self.embed_inference_channel, self.author_info_dir, len(self.adjacency_matrix))
         # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
-        self.reviewer_pool = self.init_reviewer_async(model, self.inference_channel_reviewer, self.embed_inference_channel_reviewer, self.reviewer_num)
+        self.reviewer_pool = self.init_reviewer_async(self.inference_channel_reviewer, self.embed_inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
         for agent in self.agent_pool:
             self.id2agent[agent.role_name] = agent
@@ -255,7 +246,7 @@ class Platform:
         agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
 
-    def init_reviewer_async(self, model, channel, embed_channel, count):
+    def init_reviewer_async(self, channel, embed_channel, count):
         agents=[]
         inference_channel=channel
         for i in range(count):
@@ -264,7 +255,7 @@ class Platform:
                 role_name=name,
                 content=f'You are {name}. ' + Prompts.prompt_review_system,
             )
-            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, embed_channel=embed_channel, token_limit=4096)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=4096)
             agents.append(agent)
         return agents
 
@@ -281,7 +272,7 @@ class Platform:
 
         return agent
 
-    def init_agent_async(self, model, channel, embed_channel, information_path, count):
+    def init_agent_async(self, channel, embed_channel, information_path, count):
         agents = []
         inference_channel = channel
 
@@ -295,7 +286,7 @@ class Platform:
                 role_name=name,
                 content=prompt,
             )
-            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, embed_channel=embed_channel, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
             agents.append(agent)
 
         return agents

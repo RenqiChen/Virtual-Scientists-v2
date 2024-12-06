@@ -32,10 +32,15 @@ salloc --gpus=4 -N 2 -p vip_gpu_ailab -A ai4agr  --qos=gpugpu
 
 
 登录节点
+创建tmux
 tmux new -s name
+回去tmux
 tmux a -t name
+看创建列表
 tmux ls
+创建一个新的窗口
 ctrl+b c
+看创建了多少个窗口
 ctrl+b w
 计算节点
 python run.py 2>&1 | tee output.txt
@@ -58,4 +63,4 @@ sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr port2.sh
 
 sbatch -N 2 --gres=gpu:4 --qos=gpugpu -p vip_gpu_ailab -A ai4agr port2.sh
 
-tail -n 100000 slurm-578386.out > destination_file.out
+tail -n 1000000 slurm-593177.out > destination_file.out
