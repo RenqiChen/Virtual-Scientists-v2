@@ -461,14 +461,22 @@ class SciAgent_Async(BaseAgent):
                 and "lama" in self.model_type
         ):
 
-            self.update_memory(input_message, OpenAIBackendRole.USER)
+            # self.update_memory(input_message, OpenAIBackendRole.USER)
 
             tool_call_records: List[FunctionCallingRecord] = []
             while True:
                 # Check if token has exceeded
                 try:
                     if use_memory:
-                        openai_messages, num_tokens = self.memory.get_context()
+                        openai_messages_memory, num_tokens_memory = self.memory.get_context()
+                        openai_messages = [input_message.to_openai_message(
+                            role_at_backend=OpenAIBackendRole.USER
+                        )]
+                        num_tokens = self.token_counter.count_tokens_from_messages(
+                            openai_messages
+                        )
+                        openai_messages = openai_messages_memory + openai_messages
+                        num_tokens = num_tokens + num_tokens_memory
                     else:
                         openai_messages = [input_message.to_openai_message(
                             role_at_backend=OpenAIBackendRole.USER
