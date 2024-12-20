@@ -44,11 +44,12 @@ class ChatHistoryBlock(MemoryBlock):
     def __init__(
         self,
         storage: Optional[BaseKeyValueStorage] = None,
+        max_memory_size: Optional[int] = None,
         keep_rate: float = 0.9,
     ) -> None:
         if keep_rate > 1 or keep_rate < 0:
             raise ValueError("`keep_rate` should be in [0,1]")
-        self.storage = storage or InMemoryKeyValueStorage()
+        self.storage = storage or InMemoryKeyValueStorage(max_memory_size)
         self.keep_rate = keep_rate
 
     def retrieve(

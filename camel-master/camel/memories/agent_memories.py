@@ -39,6 +39,7 @@ class ChatHistoryMemory(AgentMemory):
         context_creator: BaseContextCreator,
         storage: Optional[BaseKeyValueStorage] = None,
         window_size: Optional[int] = None,
+        max_memory_size: Optional[int] = 5,
     ) -> None:
         if window_size is not None and not isinstance(window_size, int):
             raise TypeError("`window_size` must be an integer or None.")
@@ -46,7 +47,7 @@ class ChatHistoryMemory(AgentMemory):
             raise ValueError("`window_size` must be non-negative.")
         self._context_creator = context_creator
         self._window_size = window_size
-        self._chat_history_block = ChatHistoryBlock(storage=storage)
+        self._chat_history_block = ChatHistoryBlock(storage=storage, max_memory_size=max_memory_size)
 
     def retrieve(self) -> List[ContextRecord]:
         return self._chat_history_block.retrieve(self._window_size)

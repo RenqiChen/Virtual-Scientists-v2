@@ -24,8 +24,9 @@ class InMemoryKeyValueStorage(BaseKeyValueStorage):
     when the program ends.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, max_memory_size) -> None:
         self.memory_list: List[Dict] = []
+        self.max_memory_size = max_memory_size
 
     def save(self, records: List[Dict[str, Any]]) -> None:
         r"""Saves a batch of records to the key-value storage system.
@@ -35,6 +36,8 @@ class InMemoryKeyValueStorage(BaseKeyValueStorage):
                 dictionary represents a unique record to be stored.
         """
         self.memory_list.extend(deepcopy(records))
+        if self.max_memory_size is not None and len(self.memory_list) > self.max_memory_size:
+            self.memory_list = self.memory_list[-self.max_memory_size:]
 
     def load(self) -> List[Dict[str, Any]]:
         r"""Loads all stored records from the key-value storage system.
