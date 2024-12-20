@@ -774,9 +774,7 @@ class SciAgent_Async(BaseAgent):
         # Obtain the model's response
         message_id = await self.inference_channel.write_to_receive_queue(
             format_input)
-        print(f"send_message_id: {message_id}")
         message_id, content = await self.inference_channel.read_from_send_queue(message_id)
-        print(f"receive_message_id: {message_id}")
 
         response = content
         if isinstance(response, ChatCompletion):

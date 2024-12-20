@@ -388,8 +388,9 @@ class Platform:
                 team_index.append(agent.role_name)
             # self.team_pool[agent_index][0].log_dialogue('user', hint.content)
             # self.team_pool[agent_index][0].log_dialogue(agent.role_name, x.content)
-
-        team_dic = Team(team_name = str(agent_index+1)+','+str(len(self.team_pool[agent_index])+1),
+        team_count = self.team_pool[agent_index][-1].team_name.split(',')
+        team_count = int(team_count[-1])
+        team_dic = Team(team_name = str(agent_index+1)+','+str(team_count+1),
                         log_dir = self.log_dir,
                         info_dir = self.info_dir,
                         recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)

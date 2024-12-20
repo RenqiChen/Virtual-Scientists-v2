@@ -11,6 +11,14 @@ import sys
 sys.path.append('../camel-master')
 
 from camel.messages import BaseMessage
+from camel.types import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ModelPlatformType,
+    ModelType,
+    OpenAIBackendRole,
+    RoleType,
+)
 
 from utils.prompt import Prompts
 from utils.scientist_utils import (
@@ -268,6 +276,7 @@ class Team:
             topic_message = BaseMessage.make_user_message(role_name="user", content="Final selected topic: "+self.topic)
             previous_memories.append(topic_message)
             # exit mechanism
+            self.log_dialogue('user_before', self.teammate)
             teammate = platform.id_to_agent(self.teammate)
             new_teammate = []
             new_teammate.append(teammate[0])
@@ -280,6 +289,7 @@ class Team:
                 if answer_pattern.search(reply.content):
                     new_teammate.append(agent)
             self.teammate = platform.agent_to_id(new_teammate)
+            self.log_dialogue('user_after', self.teammate)
         else:
             # update dialogue history
             previous_memories.append(last_turn_summarization)
@@ -337,6 +347,8 @@ class Team:
                 # self.log_dialogue('user', idea_prompt)
                 self.log_dialogue(agent.role_name, reply.content)
                 old_idea = extract_between_json_tags(reply.content, num=1)
+                idea_message = BaseMessage.make_user_message(role_name="user", content="In team {}, you come up with the idea: {}".format(self.team_name, old_idea))
+                await agent.update_memory(idea_message, OpenAIBackendRole.USER)
                 try:
                     if "Title" in old_idea:
                         idea_key = old_idea.split("Title")[1]
@@ -411,6 +423,8 @@ class Team:
                 self.idea = idea_list
             else:
                 self.idea = idea_list
+        if len(self.idea)==0:
+            self.idea = ['best_idea']
         print("Candidate Idea:")
         print(self.idea)
         if platform.skip_check:
@@ -539,6 +553,8 @@ class Team:
                 self.log_dialogue(teammate[agent_id].role_name, reply.content)
                 old_old_abstract = old_abstract
                 old_abstract = extract_between_json_tags(reply.content, num=1)
+                abstract_message = BaseMessage.make_user_message(role_name="user", content="In team {}, you come up with the abstract: {}".format(self.team_name, old_abstract))
+                await teammate[agent_id].update_memory(abstract_message, OpenAIBackendRole.USER)
                 if len(old_abstract.split("Abstract"))<2:
                     if agent_id!=0:
                         old_abstract=old_old_abstract
