@@ -267,6 +267,19 @@ class Team:
             previous_memories.append(last_turn_summarization)
             topic_message = BaseMessage.make_user_message(role_name="user", content="Final selected topic: "+self.topic)
             previous_memories.append(topic_message)
+            # exit mechanism
+            teammate = platform.id_to_agent(self.teammate)
+            new_teammate = []
+            new_teammate.append(teammate[0])
+            for agent in teammate[1:]:
+                exit_prompt = Prompts.to_exit_discussion.replace("[topic]", self.topic)
+                format_exit_prompt = BaseMessage.make_user_message(role_name="user", content=exit_prompt)
+                reply= await agent.step(format_exit_prompt)
+                reply = reply.msg
+                answer_pattern = re.compile(r'1', re.IGNORECASE)
+                if answer_pattern.search(reply.content):
+                    new_teammate.append(agent)
+            self.teammate = platform.agent_to_id(new_teammate)
         else:
             # update dialogue history
             previous_memories.append(last_turn_summarization)
@@ -723,7 +736,8 @@ class Team:
                 discipline = find_best_match(filter_out_number_n_symbol(reply), disciplines)
             except:
                 discipline = 'computer science'
-                
+            print('discipline:')
+            print(discipline)
             file_dict={}
             file_dict['title']=title
             file_dict['abstract']=abstract

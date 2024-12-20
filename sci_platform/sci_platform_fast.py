@@ -154,14 +154,14 @@ class Platform:
             'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
+            'server_url': [{'host': ip, 'ports': port if ip != '127.0.0.1' else port[:-1]} for ip in ips]
         }
         self.embed_inference_configs = {
             'model_type': 'llama3.1',
             'embed_model_type': "mxbai-embed-large",
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
+            'server_url': [{'host': ip, 'ports': port if ip != '127.0.0.1' else port[:-1]} for ip in ips]
         }
         self.infere = InferencerManager(
             self.inference_channel,
@@ -293,6 +293,11 @@ class Platform:
 
     async def select_single(self, agent_index):
         scientists = self.agent_pool[:self.agent_num]
+        if len(self.team_pool[agent_index]) > 0:
+            if self.team_pool[agent_index][0].state>=2:
+                return
+        else:
+            return
         # avoid too many teams
         if count_team(self.team_pool[agent_index], self.over_state)>=self.team_limit:
             return

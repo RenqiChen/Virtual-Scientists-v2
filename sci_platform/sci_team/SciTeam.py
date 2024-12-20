@@ -267,6 +267,21 @@ class Team:
             previous_memories.append(last_turn_summarization)
             topic_message = BaseMessage.make_user_message(role_name="user", content="Final selected topic: "+self.topic)
             previous_memories.append(topic_message)
+            # exit mechanism
+            self.log_dialogue('user_before', self.teammate)
+            teammate = platform.id_to_agent(self.teammate)
+            new_teammate = []
+            new_teammate.append(teammate[0])
+            for agent in teammate[1:]:
+                exit_prompt = Prompts.to_exit_discussion.replace("[topic]", self.topic)
+                format_exit_prompt = BaseMessage.make_user_message(role_name="user", content=exit_prompt)
+                reply= await agent.step(format_exit_prompt)
+                reply = reply.msg
+                answer_pattern = re.compile(r'1', re.IGNORECASE)
+                if answer_pattern.search(reply.content):
+                    new_teammate.append(agent)
+            self.teammate = platform.agent_to_id(new_teammate)
+            self.log_dialogue('user_after', self.teammate)
         else:
             # update dialogue history
             previous_memories.append(last_turn_summarization)
@@ -398,6 +413,8 @@ class Team:
                 self.idea = idea_list
             else:
                 self.idea = idea_list
+        if len(self.idea)==0:
+            self.idea = ['best_idea']
         print("Candidate Idea:")
         print(self.idea)
         if platform.skip_check:

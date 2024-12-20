@@ -105,6 +105,17 @@ class Prompts:
     In <JSON>, respond in JSON format with ONLY the following field: - “Selected Topic”: [Topic]. 
     Be cautious and realistic on your ratings. This JSON will be automatically parsed, so ensure the format is precise. You only need to output one topic."""
 
+    to_exit_discussion = """You are part of a research team that is about to write a research paper. 
+                            The topic of the project is [topic]. Based on your interest in this topic and your professional background, decide whether you want to continue being part of this team or not. 
+                            Please choose one of the following actions and provide a brief explanation for your decision.
+                            Action1: Stay in the team because you find the topic engaging.
+                            Action2: Leave the team because the topic does not appeal to you.
+                            If you choose action1, explain why you find the topic engaging and why you would like to stay in the team.
+                            If you choose action2, explain why the topic does not appeal to you and why you would prefer to leave the team.
+                            Please select an action and describe your reasoning using the following format:
+                            Selected Action: [Action 1 or Action 2].
+                            Reasoning: [Explain why you chose this action.]"""
+
     prompt_existing_idea = "Here is the idea that your team has already generated: '''{}'''\n"
 
     prompt_task = """

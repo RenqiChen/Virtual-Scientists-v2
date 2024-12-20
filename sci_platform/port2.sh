@@ -1,5 +1,5 @@
 #!/bin/sh
-module load compilers/cuda/12.1
+module load compilers/cuda/12.1_dev231018
 module load cudnn/8.8.1.3_cuda12.x
 module load compilers/gcc/12.2.0
 source activate mamba_ssm_cp311
