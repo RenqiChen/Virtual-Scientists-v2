@@ -79,7 +79,7 @@ class InferencerManager:
             if a==len(self.threads):
                 print(f'{"="*50} Over {"="*50}')
                 break
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.15)
 
     async def stop(self):
         for thread in self.threads:

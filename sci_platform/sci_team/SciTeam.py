@@ -762,7 +762,7 @@ class Team:
             file_dict['id'] = len(platform.paper_dicts)
             file_dict['authors'] = self.teammate
             file_dict['cite_papers'] = self.citation_id
-            file_dict['reviews'] = mark_sum
+            file_dict['reviews'] = int(mark_sum)
             file_dict['discipline'] = discipline
             platform.paper_dicts.append(file_dict)
             # add embedding into list

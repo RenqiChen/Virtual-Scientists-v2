@@ -63,4 +63,4 @@ sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr port2.sh
 
 sbatch -N 2 --gres=gpu:4 --qos=gpugpu -p vip_gpu_ailab -A ai4agr port2.sh
 
-tail -n 1000000 slurm-605318.out > destination_file.out
+tail -n 1000000 slurm-626288.out > destination_file.out

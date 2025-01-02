@@ -37,7 +37,7 @@ class InMemoryKeyValueStorage(BaseKeyValueStorage):
         """
         self.memory_list.extend(deepcopy(records))
         if self.max_memory_size is not None and len(self.memory_list) > self.max_memory_size:
-            self.memory_list = self.memory_list[-self.max_memory_size:]
+            self.memory_list = deepcopy(self.memory_list[-self.max_memory_size:])
 
     def load(self) -> List[Dict[str, Any]]:
         r"""Loads all stored records from the key-value storage system.

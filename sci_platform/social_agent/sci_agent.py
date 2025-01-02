@@ -206,11 +206,11 @@ class SciAgent_Async(BaseAgent):
         self.token_counter = OpenAITokenCounter(ModelType.GPT_3_5_TURBO)
         # personality memory
         self.personality_memory: AgentMemory = memory or ChatHistoryMemory(
-            context_creator, window_size=message_window_size
+            context_creator, window_size=message_window_size, max_memory_size=5
         )
         # action memory
         self.memory: AgentMemory = memory or ChatHistoryMemory(
-            context_creator, window_size=message_window_size
+            context_creator, window_size=message_window_size, max_memory_size=5
         )
 
         self.terminated: bool = False
@@ -309,7 +309,7 @@ class SciAgent_Async(BaseAgent):
         """
         return len(self.func_dict) > 0
 
-    def update_memory(
+    async def update_memory(
             self, message: BaseMessage, role: OpenAIBackendRole
     ) -> None:
         r"""Updates the agent memory with a new message.
@@ -414,7 +414,7 @@ class SciAgent_Async(BaseAgent):
             self.memory.clear()
             self.personality_memory.clear()
 
-    def record_message(self, message: BaseMessage) -> None:
+    async def record_message(self, message: BaseMessage) -> None:
         r"""Records the externally provided message into the agent memory as if
         it were an answer of the :obj:`ChatAgent` from the backend. Currently,
         the choice of the critic is submitted with this method.
@@ -423,7 +423,7 @@ class SciAgent_Async(BaseAgent):
             message (BaseMessage): An external message to be recorded in the
                 memory.
         """
-        self.update_memory(message, OpenAIBackendRole.ASSISTANT)
+        await self.update_memory(message, OpenAIBackendRole.ASSISTANT)
 
     async def step(
             self,
@@ -451,8 +451,8 @@ class SciAgent_Async(BaseAgent):
                 a boolean indicating whether the chat session has terminated,
                 and information about the chat session.
         """
-        if not use_memory:
-            self.memory.clear()
+        # if not use_memory:
+        #     self.memory.clear()
 
         if (
                 isinstance(self.model_type, ModelType)
@@ -520,7 +520,7 @@ class SciAgent_Async(BaseAgent):
 
             if len(output_messages) == 1:
                 # Auto record if the output result is a single message
-                self.record_message(output_messages[0])
+                await self.record_message(output_messages[0])
             else:
                 logger.warning(
                     "Multiple messages returned in `step()`, message won't be "
@@ -532,7 +532,7 @@ class SciAgent_Async(BaseAgent):
             )
 
         else:
-            self.update_memory(input_message, OpenAIBackendRole.USER)
+            await self.update_memory(input_message, OpenAIBackendRole.USER)
 
             tool_call_records: List[FunctionCallingRecord] = []  # type: ignore[no-redef]
             while True:
@@ -611,7 +611,7 @@ class SciAgent_Async(BaseAgent):
 
             if len(output_messages) == 1:
                 # Auto record if the output result is a single message
-                self.record_message(output_messages[0])
+                await self.record_message(output_messages[0])
             else:
                 logger.warning(
                     "Multiple messages returned in `step()`, message won't be "
@@ -656,7 +656,7 @@ class SciAgent_Async(BaseAgent):
         return response
 
 
-    def _step_tool_call_and_update(
+    async def _step_tool_call_and_update(
             self, response: ChatCompletion
     ) -> FunctionCallingRecord:
         r"""Processes a function call within the chat completion response,
@@ -677,8 +677,8 @@ class SciAgent_Async(BaseAgent):
         )
 
         # Update the messages
-        self.update_memory(func_assistant_msg, OpenAIBackendRole.ASSISTANT)
-        self.update_memory(func_result_msg, OpenAIBackendRole.FUNCTION)
+        await self.update_memory(func_assistant_msg, OpenAIBackendRole.ASSISTANT)
+        await self.update_memory(func_result_msg, OpenAIBackendRole.FUNCTION)
 
         return tool_call_record
 
@@ -691,8 +691,8 @@ class SciAgent_Async(BaseAgent):
             func_record,
         ) = await self.step_tool_call_async(response)
 
-        self.update_memory(func_assistant_msg, OpenAIBackendRole.ASSISTANT)
-        self.update_memory(func_result_msg, OpenAIBackendRole.FUNCTION)
+        await self.update_memory(func_assistant_msg, OpenAIBackendRole.ASSISTANT)
+        await self.update_memory(func_result_msg, OpenAIBackendRole.FUNCTION)
 
         return func_record
 

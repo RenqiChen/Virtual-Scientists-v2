@@ -302,10 +302,9 @@ def read_txt_files_as_dict(folder_path):
                     file_dict['title']=file_dict_old['title']
                     if isinstance(file_dict_old['abstract'], tuple):
                         file_dict['abstract']=file_dict_old['abstract'][0]
-                        file_dict['year']=file_dict_old['year'][0]
                     else:
                         file_dict['abstract']=file_dict_old['abstract']
-                        file_dict['year']=file_dict_old['year']
+                    file_dict['year']=-1
                     file_dict['citation']=file_dict_old['citation']
                     file_dict['id'] = id
                     file_dict['authors'] = None
@@ -393,7 +392,11 @@ def save2database(paper_list : list[dict], output_dir : str):
                 title TEXT,
                 authors TEXT,
                 cite_papers TEXT,
-                abstract TEXT
+                abstract TEXT,
+                year INTEGER,
+                citation INTEGER,
+                reviews INTEGER,
+                discipline TEXT
             )
         ''')
 
@@ -401,6 +404,10 @@ def save2database(paper_list : list[dict], output_dir : str):
         id = int(paper['id'])
         title = paper['title']
         abstract = paper['abstract']
+        year = int(paper['year'])
+        citation = int(paper['citation'])
+        discipline = paper['discipline']
+        review_score = paper['reviews']
         if paper['authors']!=None:
             authors = ';'.join(paper['authors'])
             paper_references = ';'.join(map(str, paper['cite_papers']))
@@ -413,12 +420,16 @@ def save2database(paper_list : list[dict], output_dir : str):
                       title,
                       authors,
                       paper_references,
-                      abstract)
+                      abstract,
+                      year,
+                      citation,
+                      review_score,
+                      discipline)
 
         # Insert query
         query = '''
-            INSERT INTO papers (id, title, authors, cite_papers, abstract)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO papers (id, title, authors, cite_papers, abstract, year, citation, reviews, discipline)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
 
         # Execute the query with user data
