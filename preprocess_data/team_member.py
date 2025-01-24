@@ -1,6 +1,6 @@
 import numpy as np
 # read txt as array
-team_list = np.loadtxt('/home/bingxing2/ailab/scxlab0066/SocialScience/team_list.txt')
+team_list = np.loadtxt('/home/bingxing2/ailab/scxlab0066/SocialScience/team_list_new.txt')
 # draw the distribution
 import matplotlib.pyplot as plt
 print(np.max(team_list))

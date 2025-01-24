@@ -52,6 +52,7 @@ output_3: origin 100000, big port
 salloc fast: 50000, big port
 
 df -Th /home/bingxing2/ailab/scxlab0066/
+df -h /home/bingxing2/ailab/scxlab0066/SocialScience
 
 OLLAMA_HOST=0.0.0.0:11434 ./ollama serve &
 sbatch -N 2 --gres=gpu:4 --qos=gpugpu -p vip_gpu_ailab -A ai4agr port2.sh
@@ -63,4 +64,4 @@ sbatch -N 1 --gres=gpu:4 -p vip_gpu_ailab -A ai4agr port2.sh
 
 sbatch -N 2 --gres=gpu:4 --qos=gpugpu -p vip_gpu_ailab -A ai4agr port2.sh
 
-tail -n 1000000 slurm-626288.out > destination_file.out
+tail -n 1000000 slurm-647511.out > destination_file.out

@@ -466,11 +466,14 @@ def extract_first_number(s):
 
 
 def most_frequent_element(arr):
-    # 使用 Counter 计算每个元素的出现次数
-    count = Counter(arr)
+    try:
+        # 使用 Counter 计算每个元素的出现次数
+        count = Counter(arr)
 
-    # 返回出现次数最多的元素
-    most_common_element = count.most_common(1)[0][0]
+        # 返回出现次数最多的元素
+        most_common_element = count.most_common(1)[0][0]
+    except:
+        most_common_element = 0
 
     return most_common_element
 

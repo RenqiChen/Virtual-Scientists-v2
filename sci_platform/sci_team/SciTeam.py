@@ -8,6 +8,7 @@ import numpy as np
 import json
 import os
 import sys
+import random
 sys.path.append('../camel-master')
 
 from camel.messages import BaseMessage
@@ -167,6 +168,8 @@ class Team:
             said = []
             agent_num = 0
             for agent in teammate:
+                if random.random() < platform.unactivation and len(teammate)>2:
+                    continue
                 if agent.role_name in said:
                     continue
                 else:
@@ -337,6 +340,8 @@ class Team:
         for turn in range(group_max_discuss_iteration):
             # discuss the idea
             for agent in teammate:
+                if random.random() < platform.unactivation and len(teammate)>2:
+                    continue
                 idea_prompt = Prompts.prompt_task+Prompts.prompt_existing_idea.format(old_idea) + \
                               Prompts.prompt_topic.format(selected_topics)+Prompts.prompt_reference.format(paper_reference) + \
                               Prompts.prompt_response
@@ -483,6 +488,8 @@ class Team:
         for turn in range(group_max_discuss_iteration):
             # discuss the idea
             for agent in teammate:
+                if random.random() < platform.unactivation and len(teammate)>2:
+                    continue
                 idea_novelty_prompt = Prompts.prompt_idea_check + \
                                       Prompts.prompt_idea_check_response.replace("{existing_idea}", idea_choices).replace("{last_query_results}", paper_reference)
                 format_idea_novelty_prompt = BaseMessage.make_user_message(role_name="user", content=idea_novelty_prompt)
@@ -526,6 +533,8 @@ class Team:
         for turn in range(group_max_discuss_iteration):
             # discuss the abstract
             for agent_id in range(len(teammate)):
+                if random.random() < platform.unactivation and len(teammate)>2:
+                    continue
                 if old_abstract == None:
                     abstract_prompt = Prompts.prompt_abstract+"\n"+\
                                       idea+"\n"+\

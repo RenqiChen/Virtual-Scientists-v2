@@ -201,7 +201,7 @@ class SciAgent_Async(BaseAgent):
         self.model_token_limit = token_limit
         context_creator = ScoreBasedContextCreator(
             OpenAITokenCounter(ModelType.GPT_3_5_TURBO),
-            4096,
+            self.model_token_limit,
         )
         self.token_counter = OpenAITokenCounter(ModelType.GPT_3_5_TURBO)
         # personality memory

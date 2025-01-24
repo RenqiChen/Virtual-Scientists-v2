@@ -45,7 +45,7 @@ class Platform:
                  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG',
 
                  #  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
-                 author_folder_path: str = 'books_OAG_3169_after',
+                 author_folder_path: str = 'books_OAG_10000_after',
                  # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/books_OAG_3169_after
 
                  #  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers",
@@ -58,7 +58,7 @@ class Platform:
 
                  author_info_dir: str = 'authors',
                  #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
-                 adjacency_matrix_dir: str = 'data_from_2010to2020_gt_200_citation/3169_authors_w_15_degrees_15_papers',
+                 adjacency_matrix_dir: str = 'new_OAG_from_2010to2020_gt_100_citation',
                  agent_model_config_name: str = 'ollama_llama3.1_8b',
                  review_model_config_name: str = 'ollama_llama3.1_70b',
                  knowledgeBank_config_dir: str = './configs/knowledge_config.json',
@@ -120,6 +120,7 @@ class Platform:
         self.author_folder_path = author_folder_path
         self.explore = explore
         self.team_organization = team_organization
+        self.unactivation = 0
 
         # for quality, the team of one member will think more times
         self.think_times = max_teammember+1
@@ -245,7 +246,7 @@ class Platform:
             role_name=name,
             content=f'You are {name}. ' + Prompts.prompt_review_system,
         )
-        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=8192, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
 
     def init_reviewer_async(self, channel, embed_channel, count):
@@ -257,7 +258,7 @@ class Platform:
                 role_name=name,
                 content=f'You are {name}. ' + Prompts.prompt_review_system,
             )
-            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=4096)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=8192)
             agents.append(agent)
         return agents
 
@@ -270,7 +271,7 @@ class Platform:
             role_name=name,
             content=prompt,
         )
-        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=8192, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
         return agent
 
@@ -288,7 +289,7 @@ class Platform:
                 role_name=name,
                 content=prompt,
             )
-            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=8192, message_window_size = self.recent_n_agent_mem_for_retrieve)
             agents.append(agent)
 
         return agents
@@ -471,15 +472,15 @@ class Platform:
         return author_reference
 
     async def team_running(self, epoch, leader_index):
-        leader_team=[]
+        # leader_team=[]
         for team_index in range(len(self.team_pool[leader_index])):
             self.team_pool[leader_index][team_index].epoch = epoch
             await self.team_pool[leader_index][team_index].action_excution(self)
-            if self.team_pool[leader_index][team_index].state != self.over_state:
-                leader_team.append(self.team_pool[leader_index][team_index])
+            # if team_index==0 or self.team_pool[leader_index][team_index].state != self.over_state:
+            #     leader_team.append(self.team_pool[leader_index][team_index])
             # if self.team_pool[leader_index][team_index].state == self.over_state:
             #     self.team_pool[leader_index][team_index].save_team_info()
-        self.team_pool[leader_index] = leader_team
+        # self.team_pool[leader_index] = leader_team
 
     async def running(self, epochs):
         # 创建调度任务
