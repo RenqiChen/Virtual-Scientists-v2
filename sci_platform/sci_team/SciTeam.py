@@ -572,7 +572,10 @@ class Team:
 
         related_papers = []
 
-        Abstract = strip_non_letters(old_abstract.split("Abstract")[1])
+        try:
+            Abstract = strip_non_letters(old_abstract.split("Abstract")[1])
+        except:
+            Abstract = "No abstracts."
 
         try:
             abstract_prompt = BaseMessage.make_user_message(role_name="user", content=Abstract)

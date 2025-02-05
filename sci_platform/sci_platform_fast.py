@@ -59,8 +59,6 @@ class Platform:
                  author_info_dir: str = 'authors',
                  #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
                  adjacency_matrix_dir: str = 'new_OAG_from_2010to2020_gt_100_citation',
-                 agent_model_config_name: str = 'ollama_llama3.1_8b',
-                 review_model_config_name: str = 'ollama_llama3.1_70b',
                  knowledgeBank_config_dir: str = './configs/knowledge_config.json',
                  log_dir: str = 'logs',
                  info_dir: str = "team_info",
@@ -151,14 +149,14 @@ class Platform:
         self.inference_channel_reviewer = Channel()
         self.embed_inference_channel_reviewer = Channel()
         self.inference_configs = {
-            'model_type': "llama3.1",
+            'model_type': "deepseek-r1:8b",
             'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
             'server_url': [{'host': ip, 'ports': port if ip != '127.0.0.1' else port[:-1]} for ip in ips]
         }
         self.embed_inference_configs = {
-            'model_type': 'llama3.1',
+            'model_type': 'deepseek-r1:8b',
             'embed_model_type': "mxbai-embed-large",
             'model_path': 'API',
             'stop_tokens': None,
