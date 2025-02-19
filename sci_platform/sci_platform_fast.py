@@ -149,14 +149,14 @@ class Platform:
         self.inference_channel_reviewer = Channel()
         self.embed_inference_channel_reviewer = Channel()
         self.inference_configs = {
-            'model_type': "deepseek-r1:8b",
+            'model_type': "llama3.1",
             'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
             'server_url': [{'host': ip, 'ports': port if ip != '127.0.0.1' else port[:-1]} for ip in ips]
         }
         self.embed_inference_configs = {
-            'model_type': 'deepseek-r1:8b',
+            'model_type': 'llama3.1',
             'embed_model_type': "mxbai-embed-large",
             'model_path': 'API',
             'stop_tokens': None,
@@ -244,7 +244,7 @@ class Platform:
             role_name=name,
             content=f'You are {name}. ' + Prompts.prompt_review_system,
         )
-        agent = SciAgent(prompt, model=model, token_limit=8192, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
 
     def init_reviewer_async(self, channel, embed_channel, count):
@@ -256,7 +256,7 @@ class Platform:
                 role_name=name,
                 content=f'You are {name}. ' + Prompts.prompt_review_system,
             )
-            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=8192)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=16384)
             agents.append(agent)
         return agents
 
@@ -269,7 +269,7 @@ class Platform:
             role_name=name,
             content=prompt,
         )
-        agent = SciAgent(prompt, model=model, token_limit=8192, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
         return agent
 
@@ -287,7 +287,7 @@ class Platform:
                 role_name=name,
                 content=prompt,
             )
-            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=8192, message_window_size = self.recent_n_agent_mem_for_retrieve)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
             agents.append(agent)
 
         return agents
