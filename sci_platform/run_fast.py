@@ -16,6 +16,13 @@ def parse_arguments():
     #     action="store_true",
     #     help="Skip novelty check and use existing ideas",
     # )
+    # checkpoint
+    parser.add_argument(
+        "--checkpoint",
+        type=bool,
+        default=deploy_config.checkpoint,
+        help="Whether use checkpoint.",
+    )
     # root direction
     parser.add_argument(
         "--root_dir",
@@ -106,7 +113,8 @@ if __name__ == '__main__':
             group_max_discuss_iteration = args.max_discuss_iteration,
             max_teammember = args.max_team_member-1,
             log_dir = args.log_dir,
-            info_dir = args.save_dir
+            info_dir = args.save_dir,
+            checkpoint= args.checkpoint,
         )
         asyncio.run(platform_example.running(args.epochs))
         # try:

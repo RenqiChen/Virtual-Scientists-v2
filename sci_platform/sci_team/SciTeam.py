@@ -49,6 +49,7 @@ class Team:
         self.epoch = -1
         self.teammate = []
         self.memory = []
+        self.mark_history = []
         self.recent_n_team_mem_for_retrieve = recent_n_team_mem_for_retrieve
         self.topic = None
         self.idea = None
@@ -742,7 +743,8 @@ class Team:
                     mark_sum = mark_sum + platform.default_mark
                 else:
                     mark_sum = mark_sum + metric[split_keyword]
-        if mark_sum>=(5*platform.reviewer_num):
+        self.mark_history.append(mark_sum)
+        if mark_sum>=(6*platform.reviewer_num):
             print('paper accept!!!!!!')
             self.state=platform.over_state
             try:
@@ -774,7 +776,7 @@ class Team:
             file_dict['id'] = len(platform.paper_dicts)
             file_dict['authors'] = self.teammate
             file_dict['cite_papers'] = self.citation_id
-            file_dict['reviews'] = int(mark_sum)
+            file_dict['reviews'] = self.mark_history
             file_dict['discipline'] = discipline
             platform.paper_dicts.append(file_dict)
             # add embedding into list
@@ -794,7 +796,71 @@ class Team:
             response = np.array(embedding_list)
             platform.gpu_index.add(response)
         else:
-            self.state = 5
+            if len(self.mark_history)>=2:
+                failure_check_prompt = Prompts.prompt_failure_check.replace("[insert failure times]", str(len(self.mark_history)))
+                failure_check_prompt = failure_check_prompt.replace("[insert failure reviews]", str(self.paper_review))
+                failure_check_prompt = failure_check_prompt.replace("[insert each failure]", str(self.mark_history))
+                format_failure_check_prompt = BaseMessage.make_user_message(role_name="user", content=failure_check_prompt)
+                reply = await teammate[0].step(format_failure_check_prompt)
+                reply = reply.msg
+                self.log_dialogue(teammate[0].role_name, reply.content)
+                answer_pattern = re.compile(r'2', re.IGNORECASE)
+
+                # check whether agent is ready to answer
+                if answer_pattern.search(reply.content):
+                    self.state=platform.over_state
+                    try:
+                        title = old_abstract.split("Abstract")[0]
+                        title = strip_non_letters(title.split("Title")[1])
+                        abstract = strip_non_letters(old_abstract.split("Abstract")[1])
+                    except:
+                        title = "No titles."
+                        abstract = "No abstracts."
+                    # add discipline
+                    disciplines = ['art', 'biology', 'business', 'computer science', 'chemistry', 'economics', 'engineering', 'environmental science',
+                        'geography', 'geology', 'history', 'materials science', 'mathematics', 'medicine', 'philosophy', 'physics', 'political science',
+                        'psychology', 'sociology']
+                    try:
+                        discipline_prompt = Prompts.prompt_discipline.replace('ABSTRACT', abstract)
+                        format_discipline_prompt = BaseMessage.make_user_message(role_name="user", content=discipline_prompt)
+                        reply = await teammate[0].step(format_discipline_prompt)
+                        reply = reply.msg.content.lower()
+                        discipline = find_best_match(filter_out_number_n_symbol(reply), disciplines)
+                    except:
+                        discipline = 'computer science'
+                    print('discipline:')
+                    print(discipline)
+                    file_dict={}
+                    file_dict['title']=title
+                    file_dict['abstract']=abstract
+                    file_dict['year']=self.epoch
+                    file_dict['citation']=-1
+                    file_dict['id'] = len(platform.paper_dicts)
+                    file_dict['authors'] = self.teammate
+                    file_dict['cite_papers'] = self.citation_id
+                    file_dict['reviews'] = self.mark_history
+                    file_dict['discipline'] = discipline
+                    platform.paper_dicts.append(file_dict)
+                    # add embedding into list
+                    embedding_list = []
+
+                    try:
+                        abstract_prompt = BaseMessage.make_user_message(role_name="user", content=abstract)
+                        query_vector = await platform.reviewer_pool[0].embed_step(abstract_prompt)
+                        query_vector = query_vector.data[0].embedding
+                    except:
+                        abstract = "No abstracts."
+                        abstract_prompt = BaseMessage.make_user_message(role_name="user", content=abstract)
+                        query_vector = await platform.reviewer_pool[0].embed_step(abstract_prompt)
+                        query_vector = query_vector.data[0].embedding
+
+                    embedding_list.append(query_vector)
+                    response = np.array(embedding_list)
+                    platform.gpu_index.add(response)
+                else:
+                    self.state = 5
+            else:
+                self.state = 5
 
     def log_dialogue(self, name, content):
         color = Color.GREEN

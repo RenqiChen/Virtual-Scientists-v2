@@ -27,7 +27,9 @@ from utils.scientist_utils import (
     count_team,
     save2database,
     read_txt_files_as_list,
-    process_author_text
+    process_author_text,
+    write_txt_file_as_dict,
+    read_txt_files_as_dict_continue,
 )
 
 import asyncio
@@ -77,6 +79,7 @@ class Platform:
                  inference_configs: dict[str, Any] | None = None,
                  explore: str = 'gaussian', # 'uniform' or 'gaussian' or 'history'
                  team_organization: str = 'exponential', # 'uniform' or 'gaussian' or 'exponential'
+                 checkpoint: bool = True,
                  ):
 
         author_folder_path = os.path.join(root_dir, author_folder_path)
@@ -133,6 +136,8 @@ class Platform:
         #     '{}/{}-hop_adj_matrix.txt'.format(self.adjacency_matrix_dir, self.degree_int2word[hop_num-1]), dtype=int)
         self.adjacency_matrix = np.loadtxt(
             '{}/weight_matrix.txt'.format(self.adjacency_matrix_dir), dtype=float)
+        
+        self.checkpoint = checkpoint
 
         # check if agent_num is valid
         if self.agent_num is None:
@@ -235,6 +240,20 @@ class Platform:
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
+        self.epoch = 0
+        if self.checkpoint:
+            self.continue_paper_folder_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/paper"
+            self.continue_folder_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database"
+            self.continue_paper_dicts = read_txt_files_as_dict_continue(self.continue_paper_folder_path)
+            self.paper_dicts = self.paper_dicts+self.continue_paper_dicts
+
+            cpu_index = faiss.read_index(os.path.join(self.continue_folder_path, 'faiss_index_OAG_4.index'))  # 加载索引
+            res = faiss.StandardGpuResources()  # 为 GPU 资源分配
+            self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
+            self.epoch = self.paper_dicts[-1]['year']+1
+        self.origin_len = len(self.paper_dicts)
+        print(self.origin_len)
+        print(self.gpu_index.ntotal)
         # self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
@@ -490,7 +509,7 @@ class Platform:
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
         self.team_pool = await self.select_coauthors()
 
-        for epoch in range(epochs):
+        for epoch in range(self.epoch, epochs):
             # state 7 is an over
             # 1. select coauthors for state 1
             # 2. select topics for state 2
@@ -507,6 +526,18 @@ class Platform:
             print(f'{"="*50} Epoch:{epoch} | Begin Select Authors {"="*50}')
             self.team_pool = await self.select_coauthors()
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
+            
+            # save database for statistics
+            output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database_large.db"
+            save2database(self.paper_dicts, output_dir)
+
+            # save faiss for similarity
+            temp_index = faiss.index_gpu_to_cpu(self.gpu_index)
+            file_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/paper"
+            faiss.write_index(temp_index, f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/faiss_index_OAG_{epoch}.index")
+            
+            # save txt for paper
+            write_txt_file_as_dict(file_path, self.paper_dicts, self.origin_len)
 
         await self.infere.stop()
         await self.embed_infere.stop()
@@ -515,8 +546,7 @@ class Platform:
         # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
         await self.inference_task,self.inference_task_reviewer
         await self.embed_inference_task,self.embed_inference_task_reviewer
-        output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database_large.db"
-        save2database(self.paper_dicts, output_dir)
+
         # save self.adjacency_matrix
         np.savetxt('/home/bingxing2/ailab/scxlab0066/SocialScience/database/weight_matrix.txt', self.adjacency_matrix, fmt='%d')
     

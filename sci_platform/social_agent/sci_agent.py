@@ -206,11 +206,11 @@ class SciAgent_Async(BaseAgent):
         self.token_counter = OpenAITokenCounter(ModelType.GPT_3_5_TURBO)
         # personality memory
         self.personality_memory: AgentMemory = memory or ChatHistoryMemory(
-            context_creator, window_size=message_window_size, max_memory_size=5
+            context_creator, window_size=message_window_size, max_memory_size=4
         )
         # action memory
         self.memory: AgentMemory = memory or ChatHistoryMemory(
-            context_creator, window_size=message_window_size, max_memory_size=5
+            context_creator, window_size=message_window_size, max_memory_size=4
         )
 
         self.terminated: bool = False
@@ -429,7 +429,7 @@ class SciAgent_Async(BaseAgent):
             self,
             input_message: BaseMessage,
             output_schema: Optional[Type[BaseModel]] = None,
-            use_memory: bool = False
+            use_memory: bool = True
     ) -> ChatAgentResponse:
         r"""Performs a single step in the chat session by generating a response
         to the input message.

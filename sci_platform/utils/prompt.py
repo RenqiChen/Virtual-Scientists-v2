@@ -394,4 +394,15 @@ class Prompts:
     Only one discipline should be selected! Do not reply anything else!!!!!
     """
 
+    prompt_failure_check = """Your team has submitted papers several times, but unfortunately, each submission has been unsuccessful. The scores for the first [insert failure times] submissions are as follows: [insert each failure]. The review comments for the latest submission are as follows: [insert failure reviews]. The full score of review is 20 and the accepted review score is 12. Now, you need to decide whether to continue . You have two options:
+
+    Option 1: Keep your team and continue revising the paper.
+    Option 2: Disband your team and abandon the paper.
+    
+    Please note that while persistence might eventually lead to success, it's important to realistically assess the feedback and scores from previous submissions to make an informed decision.
+
+    Please select an action and describe your reasoning using the following format:
+    Selected Action: [Option 1 or Option 2]
+    Reasoning: [Explain why you chose this action.]"""
+
     

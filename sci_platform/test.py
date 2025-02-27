@@ -1,8 +1,8 @@
 import requests
-import ollama
-import os
-from openai import OpenAI, Stream
-import numpy as np
+# import ollama
+# import os
+# from openai import OpenAI, Stream
+# import numpy as np
 # os.environ["OLLAMA_API_URL"] = "http://paraai-n32-h-01-agent-152:11434/v1"
 # print(os.environ["OLLAMA_API_URL"])
 # # os.environ["OLLAMA_API_URL"] = "http://paraai-n32-h-01-agent-188:11434/v1"
@@ -33,9 +33,13 @@ import numpy as np
 # )
 # print(np.array([response.data[0].embedding]).shape)
 
-min_sleep_time = 0.1
-max_sleep_time = 0.4
+# min_sleep_time = 0.1
+# max_sleep_time = 0.4
 
-sleep_time = min_sleep_time + max_sleep_time*10/48
+# sleep_time = min_sleep_time + max_sleep_time*10/48
 
-print(sleep_time)
+# print(sleep_time)
+
+list= []
+list.append(2)
+print(str(list))

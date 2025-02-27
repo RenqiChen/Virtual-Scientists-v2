@@ -27,7 +27,8 @@ from utils.scientist_utils import (
     count_team,
     save2database,
     read_txt_files_as_list,
-    process_author_text
+    process_author_text,
+    write_txt_file_as_dict
 )
 
 import asyncio
@@ -45,7 +46,7 @@ class Platform:
                  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG',
 
                  #  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
-                 author_folder_path: str = 'books_OAG_3169_after',
+                 author_folder_path: str = 'books_OAG_10000_after',
                  # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/books_OAG_3169_after
 
                  #  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers",
@@ -58,9 +59,7 @@ class Platform:
 
                  author_info_dir: str = 'authors',
                  #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
-                 adjacency_matrix_dir: str = 'data_from_2010to2020_gt_200_citation/3169_authors_w_15_degrees_15_papers',
-                 agent_model_config_name: str = 'ollama_llama3.1_8b',
-                 review_model_config_name: str = 'ollama_llama3.1_70b',
+                 adjacency_matrix_dir: str = 'new_OAG_from_2010to2020_gt_100_citation',
                  knowledgeBank_config_dir: str = './configs/knowledge_config.json',
                  log_dir: str = 'logs',
                  info_dir: str = "team_info",
@@ -79,6 +78,7 @@ class Platform:
                  inference_configs: dict[str, Any] | None = None,
                  explore: str = 'gaussian', # 'uniform' or 'gaussian' or 'history'
                  team_organization: str = 'exponential', # 'uniform' or 'gaussian' or 'exponential'
+                 checkpoint: bool = True,
                  ):
 
         author_folder_path = os.path.join(root_dir, author_folder_path)
@@ -120,6 +120,7 @@ class Platform:
         self.author_folder_path = author_folder_path
         self.explore = explore
         self.team_organization = team_organization
+        self.unactivation = 0
 
         # for quality, the team of one member will think more times
         self.think_times = max_teammember+1
@@ -134,6 +135,8 @@ class Platform:
         #     '{}/{}-hop_adj_matrix.txt'.format(self.adjacency_matrix_dir, self.degree_int2word[hop_num-1]), dtype=int)
         self.adjacency_matrix = np.loadtxt(
             '{}/weight_matrix.txt'.format(self.adjacency_matrix_dir), dtype=float)
+        
+        self.checkpoint = checkpoint
 
         # check if agent_num is valid
         if self.agent_num is None:
@@ -145,15 +148,6 @@ class Platform:
         # with open('{}/agentID2authorID.json'.format(self.adjacency_matrix_dir), 'r') as file:
         #     self.agentID2authorID = json.load(file)
 
-        # init model
-        model = ModelFactory.create(
-            model_platform=ModelPlatformType.OLLAMA,
-            model_type="llama3.1",
-            embed_model_type = "mxbai-embed-large",
-            url="http://127.0.0.1:11434/v1",
-            model_config_dict={"temperature": 0.4},
-        )
-
         self.inference_channel = Channel()
         self.embed_inference_channel = Channel()
         self.inference_channel_reviewer = Channel()
@@ -163,14 +157,14 @@ class Platform:
             'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
+            'server_url': [{'host': ip, 'ports': port if ip != '127.0.0.1' else port[:-1]} for ip in ips]
         }
         self.embed_inference_configs = {
             'model_type': 'llama3.1',
             'embed_model_type': "mxbai-embed-large",
             'model_path': 'API',
             'stop_tokens': None,
-            'server_url': [{'host': ip, 'ports': self.port} for ip in self.ips]
+            'server_url': [{'host': ip, 'ports': port if ip != '127.0.0.1' else port[:-1]} for ip in ips]
         }
         self.infere = InferencerManager(
             self.inference_channel,
@@ -200,14 +194,15 @@ class Platform:
 
         # init agent pool
         # self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
-        self.agent_pool = self.init_agent_async(model, self.inference_channel, self.embed_inference_channel, self.author_info_dir, len(self.adjacency_matrix))
+        self.agent_pool = self.init_agent_async(self.inference_channel, self.embed_inference_channel, self.author_info_dir, len(self.adjacency_matrix))
         # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
-        self.reviewer_pool = self.init_reviewer_async(model, self.inference_channel_reviewer, self.embed_inference_channel_reviewer, self.reviewer_num)
+        self.reviewer_pool = self.init_reviewer_async(self.inference_channel_reviewer, self.embed_inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
         for agent in self.agent_pool:
             self.id2agent[agent.role_name] = agent
         # team pool
         self.team_pool = []
+        self.team_count = []
         agent_id = 1
         for agent in self.agent_pool[:self.agent_num]:
             team_agent = []
@@ -220,6 +215,7 @@ class Platform:
             team_dic.teammate = team_index
             team_agent.append(team_dic)
             self.team_pool.append(team_agent)
+            self.team_count.append(1)
             agent_id = agent_id + 1
 
         # paper embedding list
@@ -243,6 +239,17 @@ class Platform:
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
+        self.epoch = 0
+        if self.checkpoint:
+            self.continue_paper_folder_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/paper"
+            self.continue_paper_dicts = read_txt_files_as_dict(self.continue_paper_folder_path)
+            self.paper_dicts = self.paper_dicts+self.continue_paper_dicts
+
+            cpu_authors_index = faiss.read_index(os.path.join(self.continue_paper_folder_path, 'faiss_index_OAG.index'))  # 加载索引
+            authors_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
+            self.gpu_authors_index = faiss.index_cpu_to_gpu(authors_res, 0, cpu_authors_index)  # 将索引移到 GPU
+            self.epoch = self.paper_dicts[-1]['year']+1
+        self.origin_len = len(self.paper_dicts)
         # self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
@@ -252,10 +259,10 @@ class Platform:
             role_name=name,
             content=f'You are {name}. ' + Prompts.prompt_review_system,
         )
-        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
 
-    def init_reviewer_async(self, model, channel, embed_channel, count):
+    def init_reviewer_async(self, channel, embed_channel, count):
         agents=[]
         inference_channel=channel
         for i in range(count):
@@ -264,7 +271,7 @@ class Platform:
                 role_name=name,
                 content=f'You are {name}. ' + Prompts.prompt_review_system,
             )
-            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, embed_channel=embed_channel, token_limit=4096)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=16384)
             agents.append(agent)
         return agents
 
@@ -277,11 +284,11 @@ class Platform:
             role_name=name,
             content=prompt,
         )
-        agent = SciAgent(prompt, model=model, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
         return agent
 
-    def init_agent_async(self, model, channel, embed_channel, information_path, count):
+    def init_agent_async(self, channel, embed_channel, information_path, count):
         agents = []
         inference_channel = channel
 
@@ -295,13 +302,18 @@ class Platform:
                 role_name=name,
                 content=prompt,
             )
-            agent = SciAgent_Async(prompt, model=model, channel=inference_channel, embed_channel=embed_channel, token_limit=4096, message_window_size = self.recent_n_agent_mem_for_retrieve)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
             agents.append(agent)
 
         return agents
 
     async def select_single(self, agent_index):
         scientists = self.agent_pool[:self.agent_num]
+        if len(self.team_pool[agent_index]) > 0:
+            if self.team_pool[agent_index][0].state>=2:
+                return
+        else:
+            return
         # avoid too many teams
         if count_team(self.team_pool[agent_index], self.over_state)>=self.team_limit:
             return
@@ -358,7 +370,7 @@ class Platform:
             scale = 1 / lambda_val  
             team_sample = np.random.exponential(scale, 1)+3
             team_sample_int = np.floor(team_sample).astype(int)
-            team_size = np.clip(team_sample_int, 3, 2*self.max_teammember-3)
+            team_size = np.clip(team_sample_int, 3, 2*self.max_teammember+3)
         
         selected_indices = np.random.choice(len(arr), size=team_size, p=probabilities, replace=False)
 
@@ -392,14 +404,15 @@ class Platform:
                 team_index.append(agent.role_name)
             # self.team_pool[agent_index][0].log_dialogue('user', hint.content)
             # self.team_pool[agent_index][0].log_dialogue(agent.role_name, x.content)
-
-        team_dic = Team(team_name = str(agent_index+1)+','+str(len(self.team_pool[agent_index])+1),
+        team_count = self.team_count[agent_index]+1
+        team_dic = Team(team_name = str(agent_index+1)+','+str(team_count),
                         log_dir = self.log_dir,
                         info_dir = self.info_dir,
                         recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)
         team_dic.state=2
         team_dic.teammate = team_index
         self.team_pool[agent_index].append(team_dic)
+        self.team_count[agent_index]=team_count
 
         # connetion between collaborators will be closer
         for member in team_dic.teammate:
@@ -472,15 +485,15 @@ class Platform:
         return author_reference
 
     async def team_running(self, epoch, leader_index):
-        leader_team=[]
+        # leader_team=[]
         for team_index in range(len(self.team_pool[leader_index])):
             self.team_pool[leader_index][team_index].epoch = epoch
             await self.team_pool[leader_index][team_index].action_excution(self)
-            if self.team_pool[leader_index][team_index].state != self.over_state:
-                leader_team.append(self.team_pool[leader_index][team_index])
+            # if team_index==0 or self.team_pool[leader_index][team_index].state != self.over_state:
+            #     leader_team.append(self.team_pool[leader_index][team_index])
             # if self.team_pool[leader_index][team_index].state == self.over_state:
             #     self.team_pool[leader_index][team_index].save_team_info()
-        self.team_pool[leader_index] = leader_team
+        # self.team_pool[leader_index] = leader_team
 
     async def running(self, epochs):
         # 创建调度任务
@@ -492,7 +505,7 @@ class Platform:
         print(f'{"="*50}Epoch:{-1} | Initialize Teams {"="*50}')
         self.team_pool = await self.select_coauthors()
 
-        for epoch in range(epochs):
+        for epoch in range(self.epoch, epochs):
             # state 7 is an over
             # 1. select coauthors for state 1
             # 2. select topics for state 2
@@ -509,6 +522,13 @@ class Platform:
             print(f'{"="*50} Epoch:{epoch} | Begin Select Authors {"="*50}')
             self.team_pool = await self.select_coauthors()
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
+            
+            output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database_large.db"
+            save2database(self.paper_dicts, output_dir)
+            temp_index = faiss.index_gpu_to_cpu(self.gpu_index)
+            file_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/paper"
+            faiss.write_index(temp_index, f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/faiss_index_OAG_{epoch}.index")
+            write_txt_file_as_dict(file_path, self.paper_dicts, self.origin_len)
 
         await self.infere.stop()
         await self.embed_infere.stop()
@@ -517,8 +537,7 @@ class Platform:
         # 等待task.run完成，防止主程序结束kill子线程(即inference_task)
         await self.inference_task,self.inference_task_reviewer
         await self.embed_inference_task,self.embed_inference_task_reviewer
-        output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database_large.db"
-        save2database(self.paper_dicts, output_dir)
+
         # save self.adjacency_matrix
         np.savetxt('/home/bingxing2/ailab/scxlab0066/SocialScience/database/weight_matrix.txt', self.adjacency_matrix, fmt='%d')
     
