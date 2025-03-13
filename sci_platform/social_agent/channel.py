@@ -46,7 +46,7 @@ class Channel:
         return message_id
 
     async def read_from_send_queue(self, message_id):
-        min_sleep_time = 0.1
+        min_sleep_time = 0.2
         max_sleep_time = 0.2
         sleep_time = min_sleep_time + max_sleep_time*len(self.send_dict.dict)/60
         while True:

@@ -23,6 +23,20 @@ def parse_arguments():
         default=deploy_config.checkpoint,
         help="Whether use checkpoint.",
     )
+    # test_time
+    parser.add_argument(
+        "--test_time",
+        type=str,
+        default=deploy_config.test_time,
+        help='save new file',
+    )
+    # load_time
+    parser.add_argument(
+        "--load_time",
+        type=str,
+        default=deploy_config.load_time,
+        help="load old file",
+    )
     # root direction
     parser.add_argument(
         "--root_dir",
@@ -115,6 +129,8 @@ if __name__ == '__main__':
             log_dir = args.log_dir,
             info_dir = args.save_dir,
             checkpoint= args.checkpoint,
+            test_time = args.test_time,
+            load_time = args.load_time,
         )
         asyncio.run(platform_example.running(args.epochs))
         # try:

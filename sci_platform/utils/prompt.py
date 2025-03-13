@@ -386,12 +386,28 @@ class Prompts:
     19. Sociology
     
     Paper's Abstract:
-    ABSTRACT
+    [ABSTRACT]
     
     Reply Format:
     [Selected Discipline]
     
     Only one discipline should be selected! Do not reply anything else!!!!!
+    """
+
+    prompt_keywords = """
+    Given the following abstract, extract six relevant keywords that best represent the core topics and themes of the research. The keywords should reflect the main concepts, methods, or findings of the paper.
+
+    Paper's Abstract: [ABSTRACT]
+
+    Please respond in the following format:
+
+    ```json
+
+    Keywords (6): keyword1, keyword2, keyword3, keyword4, keyword5, keyword6
+
+    ```
+
+    This JSON will be automatically parsed, so ensure the format is precise.
     """
 
     prompt_failure_check = """Your team has submitted papers several times, but unfortunately, each submission has been unsuccessful. The scores for the first [insert failure times] submissions are as follows: [insert each failure]. The review comments for the latest submission are as follows: [insert failure reviews]. The full score of review is 20 and the accepted review score is 12. Now, you need to decide whether to continue . You have two options:

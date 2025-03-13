@@ -7,6 +7,7 @@ import ollama
 from functools import partial
 import faiss
 from typing import Any
+import random
 
 sys.path.append('../camel-master')
 from camel.agents import SciAgent
@@ -80,6 +81,8 @@ class Platform:
                  explore: str = 'gaussian', # 'uniform' or 'gaussian' or 'history'
                  team_organization: str = 'exponential', # 'uniform' or 'gaussian' or 'exponential'
                  checkpoint: bool = True,
+                 test_time: str = 'None',
+                 load_time: str = 'None',
                  ):
 
         author_folder_path = os.path.join(root_dir, author_folder_path)
@@ -138,6 +141,16 @@ class Platform:
             '{}/weight_matrix.txt'.format(self.adjacency_matrix_dir), dtype=float)
         
         self.checkpoint = checkpoint
+        self.test_time = test_time
+        self.load_time = load_time
+        folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}"
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+            subfolders = ["paper", "faiss", "team"]
+            for sub in subfolders:
+                sub_path = os.path.join(folder_path, sub)
+                if not os.path.exists(sub_path):
+                    os.makedirs(sub_path)
 
         # check if agent_num is valid
         if self.agent_num is None:
@@ -201,23 +214,41 @@ class Platform:
         self.id2agent = {}
         for agent in self.agent_pool:
             self.id2agent[agent.role_name] = agent
-        # team pool
-        self.team_pool = []
-        self.team_count = []
-        agent_id = 1
-        for agent in self.agent_pool[:self.agent_num]:
-            team_agent = []
-            team_index = []
-            team_index.append(agent.role_name)
-            team_dic = Team(team_name = str(agent_id)+','+str(1),
-                            log_dir = self.log_dir,
-                            info_dir = self.info_dir,
-                            recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)
-            team_dic.teammate = team_index
-            team_agent.append(team_dic)
-            self.team_pool.append(team_agent)
-            self.team_count.append(1)
-            agent_id = agent_id + 1
+        if not self.checkpoint:
+            # team pool
+            self.team_pool = []
+            self.team_count = []
+            agent_id = 1
+            random_indices = random.sample(range(len(self.agent_pool)), self.agent_num)
+            self.random_indices = random_indices
+            for i in random_indices:
+                agent = self.agent_pool[i]
+                team_agent = []
+                team_index = []
+                team_index.append(agent.role_name)
+                team_dic = Team(team_name = str(agent_id)+','+str(1),
+                                log_dir = self.log_dir,
+                                info_dir = self.info_dir,
+                                recent_n_team_mem_for_retrieve = self.recent_n_team_mem_for_retrieve)
+                team_dic.teammate = team_index
+                team_agent.append(team_dic)
+                self.team_pool.append(team_agent)
+                self.team_count.append(1)
+                agent_id = agent_id + 1
+        else:
+            with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/team/team_preamble.txt", 'r') as file:
+                file_content = file.read()
+                dict = eval(file_content)
+                self.team_count=dict['team_count']
+                self.random_indices=dict['team_indices']
+            self.team_pool=[]
+            for team_leader in range(len(self.random_indices)):
+                with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/team/{team_leader}.txt", 'r') as file:
+                    team_leader_list = []
+                    for line in file:
+                        team_index = json.loads(line.strip())
+                        team_leader_list.append(Team.load_from_file(team_index))
+                    self.team_pool.append(team_leader_list)
 
         # paper embedding list
         # cpu_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index.index")  # 加载索引
@@ -241,18 +272,19 @@ class Platform:
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
         self.epoch = 0
+        self.origin_len = len(self.paper_dicts)
         if self.checkpoint:
-            self.continue_paper_folder_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/paper"
-            self.continue_folder_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database"
+            self.continue_paper_folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/paper"
+            self.continue_folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/faiss"
             self.continue_paper_dicts = read_txt_files_as_dict_continue(self.continue_paper_folder_path)
             self.paper_dicts = self.paper_dicts+self.continue_paper_dicts
 
-            cpu_index = faiss.read_index(os.path.join(self.continue_folder_path, 'faiss_index_OAG_4.index'))  # 加载索引
+            cpu_index = faiss.read_index(os.path.join(self.continue_folder_path, 'faiss_index_OAG.index'))  # 加载索引
             res = faiss.StandardGpuResources()  # 为 GPU 资源分配
             self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
             self.epoch = self.paper_dicts[-1]['year']+1
-        self.origin_len = len(self.paper_dicts)
         print(self.origin_len)
+        print(len(self.paper_dicts))
         print(self.gpu_index.ntotal)
         # self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
@@ -312,7 +344,7 @@ class Platform:
         return agents
 
     async def select_single(self, agent_index):
-        scientists = self.agent_pool[:self.agent_num]
+        scientists = [self.agent_pool[i] for i in self.random_indices]
         if len(self.team_pool[agent_index]) > 0:
             if self.team_pool[agent_index][0].state>=2:
                 return
@@ -355,8 +387,8 @@ class Platform:
             arr += random_values
         else:
             # extract the index that is not 0, 2-jump
-            arr_2 = arr[arr != 0].copy()
-            for i in range(len(arr_2)):
+            arr_2 = np.nonzero(arr)[0]
+            for i in arr_2:
                 for j in range(len(self.adjacency_matrix)):
                     arr[j] = arr[j] + 0.1*self.adjacency_matrix[i, j]
         arr[agent_index] = 0
@@ -420,9 +452,9 @@ class Platform:
 
         # connetion between collaborators will be closer
         for member in team_dic.teammate:
-            if int(member[9:])!=agent_index:
-                self.adjacency_matrix[agent_index, int(member[9:])]=self.adjacency_matrix[agent_index, int(member[9:])]+0.2
-                self.adjacency_matrix[int(member[9:]), agent_index]=self.adjacency_matrix[int(member[9:]), agent_index]+0.2
+            if int(member[9:])!=self.random_indices[agent_index]:
+                self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]=self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]+0.2
+                self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]=self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]+0.2
         # summary current teams in memory
         summary_select = await scientists[agent_index].step(BaseMessage.make_user_message(
             content=team_description_detail(self.team_pool[agent_index], self.agent_pool, self.over_state),
@@ -430,10 +462,9 @@ class Platform:
         self.team_pool[agent_index][0].log_dialogue(scientists[agent_index].role_name, summary_select.msg.content)
 
     async def select_coauthors(self,):
-        scientists = self.agent_pool[:self.agent_num]
         # decide whether the scientist wants to find partners
         select_tasks = []
-        for agent_index in range(len(scientists)):
+        for agent_index in range(self.agent_num):
             select_tasks.append(self.select_single(agent_index))
         await asyncio.gather(*select_tasks)  # 并行执行所有任务
         team_list = self.team_pool
@@ -528,16 +559,29 @@ class Platform:
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
             
             # save database for statistics
-            output_dir = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/database_large.db"
+            output_dir = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/database_large.db"
             save2database(self.paper_dicts, output_dir)
 
             # save faiss for similarity
             temp_index = faiss.index_gpu_to_cpu(self.gpu_index)
-            file_path = "/home/bingxing2/ailab/scxlab0066/SocialScience/database/paper"
-            faiss.write_index(temp_index, f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/faiss_index_OAG_{epoch}.index")
+            file_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/paper"
+            faiss.write_index(temp_index, f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/faiss/faiss_index_OAG.index")
             
             # save txt for paper
             write_txt_file_as_dict(file_path, self.paper_dicts, self.origin_len)
+            team_information_dict = {
+                'team_count': self.team_count,
+                'team_indices': self.random_indices
+            }
+            with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/team/team_preamble.txt", "w", encoding="utf-8") as f:
+                f.write(str(team_information_dict))
+            for team_leader in range(len(self.random_indices)):
+                path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/team/{team_leader}.txt"
+                if os.path.exists(path):
+                    os.remove(path)
+                for team_index in self.team_pool[team_leader]:
+                    team_index.save_to_file(path)
+
 
         await self.infere.stop()
         await self.embed_infere.stop()
@@ -548,5 +592,5 @@ class Platform:
         await self.embed_inference_task,self.embed_inference_task_reviewer
 
         # save self.adjacency_matrix
-        np.savetxt('/home/bingxing2/ailab/scxlab0066/SocialScience/database/weight_matrix.txt', self.adjacency_matrix, fmt='%d')
+        np.savetxt(f'/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/weight_matrix.txt', self.adjacency_matrix, fmt='%d')
     

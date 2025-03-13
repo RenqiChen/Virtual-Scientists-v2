@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from copy import deepcopy
 import logging
 import re
 import ollama
@@ -42,21 +42,23 @@ from utils.scientist_utils import (
 )
 
 class Team:
-    def __init__(self, team_name, log_dir, info_dir, recent_n_team_mem_for_retrieve):
+    def __init__(self, team_name, log_dir, info_dir, recent_n_team_mem_for_retrieve, state=1, epoch=-1, teammate=[], memory=[], mark_history=[],topic="None", idea="None", abstract="None",citation_id=[],self_review="None", paper_review="None"):
         # attrs
         self.team_name = team_name
-        self.state = 1
-        self.epoch = -1
-        self.teammate = []
-        self.memory = []
-        self.mark_history = []
+        self.state = state
+        self.epoch = epoch
+        self.teammate = deepcopy(teammate)
+        self.memory = deepcopy(memory)
+        self.mark_history = deepcopy(mark_history)
         self.recent_n_team_mem_for_retrieve = recent_n_team_mem_for_retrieve
-        self.topic = None
-        self.idea = None
-        self.abstract = None
-        self.citation_id = None
-        self.self_review = None
-        self.paper_review = None
+        self.topic = topic
+        self.idea = idea
+        self.abstract = abstract
+        self.citation_id = deepcopy(citation_id)
+        self.self_review = self_review
+        self.paper_review = paper_review
+        self.log_dir = log_dir
+        self.info_dir = info_dir
 
         # state log
         self.state_log = {
@@ -183,8 +185,12 @@ class Team:
                 format_agent_prompt = BaseMessage.make_user_message(role_name="user", content=agent_prompt)
 
                 # add reply to turn_history
-                reply = await agent.step(format_agent_prompt)
-                reply = reply.msg
+                try:
+                    reply = await agent.step(format_agent_prompt)
+                    reply = reply.msg
+                except:
+                    reply = None
+                    print('No response_discussion')
                 if reply.content != None and len(reply.content) > 0:
                     self.log_dialogue(agent.role_name, reply.content)
                 involved_scientist = extract_scientist_names(reply.content)
@@ -204,6 +210,7 @@ class Team:
                                 special_guest_reply = special_guest_reply.msg.content
                             except:
                                 special_guest_reply = None
+                                print('No response_special_guest')
                             if special_guest_reply is not None:
                                 said.append(scientist_index)
                                 self.teammate.append(scientist_index)
@@ -348,8 +355,12 @@ class Team:
                               Prompts.prompt_response
 
                 format_idea_prompt = BaseMessage.make_user_message(role_name="user", content=idea_prompt)
-                reply = await agent.step(format_idea_prompt)
-                reply = reply.msg
+                try:
+                    reply = await agent.step(format_idea_prompt)
+                    reply = reply.msg
+                except:
+                    reply = None
+                    print('No Response_idea')
                 # self.log_dialogue('user', idea_prompt)
                 self.log_dialogue(agent.role_name, reply.content)
                 old_idea = extract_between_json_tags(reply.content, num=1)
@@ -422,7 +433,7 @@ class Team:
                     break
             if idea_judge:
                 break
-        if self.idea == None:
+        if self.idea == "None":
             if len(idea_list)>3:
                 indices = top_three_indices(mark_list)
                 idea_list = [idea_list[i] for i in indices]
@@ -512,7 +523,7 @@ class Team:
             self.idea = existing_idea[final_choice]
         except:
             self.idea = existing_idea[0]
-        if self.idea == None:
+        if self.idea == "None":
             self.idea = 'No idea and you can think freely.'
         if len(self.idea)<10:
             self.idea = 'No idea and you can think freely.'
@@ -536,16 +547,16 @@ class Team:
             for agent_id in range(len(teammate)):
                 if random.random() < platform.unactivation and len(teammate)>2:
                     continue
-                if old_abstract == None:
+                if old_abstract == "None":
                     abstract_prompt = Prompts.prompt_abstract+"\n"+\
                                       idea+"\n"+\
                                       Prompts.prompt_abstract_requirement+"\n"+\
                                       Prompts.prompt_abstract_response
                 else:
                     # the paper is not reviewed by reviewer
-                    if self.paper_review == None:
+                    if self.paper_review == "None":
                         # the paper is not reviewer by the team member
-                        if self.self_review == None:
+                        if self.self_review == "None":
                             prompt_abstract_judgement = Prompts.prompt_abstract_judgement.replace("[Insert abstract here]",old_abstract)
                             abstract_prompt = prompt_abstract_judgement+Prompts.prompt_abstract_revise_response
                         else:
@@ -558,8 +569,12 @@ class Team:
                         abstract_prompt = prompt_abstract_judgement+Prompts.prompt_abstract_revise_response
 
                 format_abstract_prompt = BaseMessage.make_user_message(role_name="user", content=abstract_prompt)
-                reply = await teammate[agent_id].step(format_abstract_prompt)
-                reply = reply.msg
+                try:
+                    reply = await teammate[agent_id].step(format_abstract_prompt)
+                    reply = reply.msg
+                except:
+                    reply = None
+                    print('No Response_abstract')
                 self.log_dialogue(teammate[agent_id].role_name, reply.content)
                 old_old_abstract = old_abstract
                 old_abstract = extract_between_json_tags(reply.content, num=1)
@@ -672,8 +687,12 @@ class Team:
             abstract_check_prompt = abstract_check_prompt + "\n" + Prompts.prompt_response_check
 
             format_abstract_check_prompt = BaseMessage.make_user_message(role_name="user", content=abstract_check_prompt)
-            reply = await teammate[0].step(format_abstract_check_prompt)
-            reply = reply.msg
+            try:
+                reply = await teammate[0].step(format_abstract_check_prompt)
+                reply = reply.msg
+            except:
+                reply = None
+                print('No Response_abstract_check')
             self.log_dialogue(teammate[0].role_name, reply.content)
             print("abstract_check:")
             print(split_keywords)
@@ -698,22 +717,22 @@ class Team:
 
             if abstract_use:
                 self.state=6
-                self.self_review=None
+                self.self_review="None"
             # if the abstract is too similar one time, go to revise, otherwise back to generate idea
             else:
-                if self.self_review!=None:
+                if self.self_review!="None":
                     self.state=3
-                    self.idea = None
-                    self.abstract = None
-                    self.citation_id = None
-                    self.self_review = None
-                    self.paper_review = None
+                    self.idea = "None"
+                    self.abstract = "None"
+                    self.citation_id = []
+                    self.self_review = "None"
+                    self.paper_review = "None"
                 else:
                     self.self_review = reply.content
 
         else:
             print('Check Fail!!!!!!')
-            if self.abstract == None:
+            if self.abstract == "None":
                 self.abstract = old_abstract
                 print('Final Abstract:')
                 print(self.abstract)
@@ -726,7 +745,7 @@ class Team:
         old_abstract = self.abstract
         review_prompt = Prompts.prompt_review_require_simple.replace("{paper}", old_abstract)
         mark_sum = 0
-        self.paper_review == None
+        self.paper_review == "None"
         for _ in range(platform.reviewer_num):
             format_review_prompt = BaseMessage.make_user_message(role_name="user", content=review_prompt)
             reply = await platform.reviewer_pool[_].step(format_review_prompt)
@@ -734,7 +753,7 @@ class Team:
             self.log_dialogue(platform.reviewer_pool[_].role_name, reply.content)
             split_keywords = ['Overall']
             metric = extract_metrics(reply.content, split_keywords)
-            if self.paper_review == None:
+            if self.paper_review == "None":
                 self.paper_review = platform.reviewer_pool[_].role_name+":\n"+reply.content
             else:
                 self.paper_review = self.paper_review+"\n"+platform.reviewer_pool[_].role_name+":\n"+reply.content
@@ -759,15 +778,20 @@ class Team:
                 'geography', 'geology', 'history', 'materials science', 'mathematics', 'medicine', 'philosophy', 'physics', 'political science',
                 'psychology', 'sociology']
             try:
-                discipline_prompt = Prompts.prompt_discipline.replace('ABSTRACT', abstract)
+                discipline_prompt = Prompts.prompt_discipline.replace('[ABSTRACT]', abstract)
                 format_discipline_prompt = BaseMessage.make_user_message(role_name="user", content=discipline_prompt)
                 reply = await teammate[0].step(format_discipline_prompt)
                 reply = reply.msg.content.lower()
                 discipline = find_best_match(filter_out_number_n_symbol(reply), disciplines)
             except:
                 discipline = 'computer science'
-            print('discipline:')
-            print(discipline)
+            try:
+                keywords_prompt = Prompts.prompt_keywords.replace('[ABSTRACT]', abstract)
+                format_keyword_prompt = BaseMessage.make_user_message(role_name="user", content=keywords_prompt)
+                reply = await teammate[0].step(format_keyword_prompt)
+                keywords = extract_between_json_tags(reply.msg.content)
+            except:
+                keywords = 'None'
             file_dict={}
             file_dict['title']=title
             file_dict['abstract']=abstract
@@ -778,6 +802,7 @@ class Team:
             file_dict['cite_papers'] = self.citation_id
             file_dict['reviews'] = self.mark_history
             file_dict['discipline'] = discipline
+            file_dict['keywords'] = keywords
             platform.paper_dicts.append(file_dict)
             # add embedding into list
             embedding_list = []
@@ -821,15 +846,20 @@ class Team:
                         'geography', 'geology', 'history', 'materials science', 'mathematics', 'medicine', 'philosophy', 'physics', 'political science',
                         'psychology', 'sociology']
                     try:
-                        discipline_prompt = Prompts.prompt_discipline.replace('ABSTRACT', abstract)
+                        discipline_prompt = Prompts.prompt_discipline.replace('[ABSTRACT]', abstract)
                         format_discipline_prompt = BaseMessage.make_user_message(role_name="user", content=discipline_prompt)
                         reply = await teammate[0].step(format_discipline_prompt)
                         reply = reply.msg.content.lower()
                         discipline = find_best_match(filter_out_number_n_symbol(reply), disciplines)
                     except:
                         discipline = 'computer science'
-                    print('discipline:')
-                    print(discipline)
+                    try:
+                        keywords_prompt = Prompts.prompt_keywords.replace('[ABSTRACT]', abstract)
+                        format_keyword_prompt = BaseMessage.make_user_message(role_name="user", content=keywords_prompt)
+                        reply = await teammate[0].step(format_keyword_prompt)
+                        keywords = extract_between_json_tags(reply.msg.content)
+                    except:
+                        keywords = 'None'
                     file_dict={}
                     file_dict['title']=title
                     file_dict['abstract']=abstract
@@ -840,6 +870,7 @@ class Team:
                     file_dict['cite_papers'] = self.citation_id
                     file_dict['reviews'] = self.mark_history
                     file_dict['discipline'] = discipline
+                    file_dict['keywords'] = keywords
                     platform.paper_dicts.append(file_dict)
                     # add embedding into list
                     embedding_list = []
@@ -882,6 +913,44 @@ class Team:
         # print(f'{"="*50} SAVE TEAM INFO {"="*50}')
         # with open(self.info_file, 'w') as json_file:
         #     json.dump(team_info, json_file, indent=4)
+    
+    def save_to_file(self,path):
+        with open(path, "a", encoding="utf-8") as f:
+            team_dict={
+            'team_name':self.team_name,
+            'state':str(self.state),
+            'epoch':str(self.epoch),
+            'teammate':self.teammate,
+            'mark_history':[str(mark) for mark in self.mark_history],
+            'recent_n_team_mem_for_retrieve':str(self.recent_n_team_mem_for_retrieve),
+            'topic':self.topic,
+            'idea':self.idea,
+            'abstract':self.abstract,
+            'citation_id':[str(id) for id in self.citation_id],
+            'self_review':self.self_review,
+            'paper_review':self.paper_review,
+            'log_dir':self.log_dir,
+            'info_dir':self.info_dir
+            }
+            f.write(json.dumps(team_dict)+"\n")
+    
+    @classmethod
+    def load_from_file(cls,team_dict):
+        return cls(team_dict['team_name'],
+                   team_dict['log_dir'],
+                   team_dict['info_dir'],
+                   int(team_dict['recent_n_team_mem_for_retrieve']),
+                   int(team_dict['state']),
+                   int(team_dict['epoch']),
+                   team_dict['teammate'],
+                   [], #memory
+                   [int(mark) for mark in team_dict['mark_history']],
+                   team_dict['topic'],
+                   team_dict['idea'],
+                   team_dict['abstract'],
+                   [int(id) for id in team_dict['citation_id']],
+                   team_dict['self_review'],
+                   team_dict['paper_review'])
 
 if __name__=='__main__':
     team1 = Team('LPL')

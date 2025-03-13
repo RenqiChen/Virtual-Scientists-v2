@@ -311,6 +311,7 @@ def read_txt_files_as_dict(folder_path):
                     file_dict['cite_papers'] = None
                     file_dict['reviews'] = None
                     file_dict['discipline'] = None
+                    file_dict['keywords'] = None
                 except json.JSONDecodeError:
                     print(f"文件 {filename} 的内容不是有效的JSON格式，跳过该文件。")
                     continue
@@ -346,6 +347,7 @@ def read_txt_files_as_dict_continue(folder_path):
                     file_dict['cite_papers'] = file_dict_old['cite_papers']
                     file_dict['reviews'] = file_dict_old['reviews']
                     file_dict['discipline'] = file_dict_old['discipline']
+                    file_dict['keywords'] = file_dict_old['keywords']
                 except json.JSONDecodeError:
                     print(f"文件 {filename} 的内容不是有效的JSON格式，跳过该文件。")
                     continue
@@ -438,7 +440,8 @@ def save2database(paper_list : list[dict], output_dir : str):
                 year INTEGER,
                 citation INTEGER,
                 reviews TEXT,
-                discipline TEXT
+                discipline TEXT,
+                keyword TEXT
             )
         ''')
 
@@ -449,6 +452,7 @@ def save2database(paper_list : list[dict], output_dir : str):
         year = int(paper['year'])
         citation = int(paper['citation'])
         discipline = paper['discipline']
+        keyword = paper['keywords']
         review_score = paper['reviews']
         if paper['authors']!=None:
             authors = ';'.join(paper['authors'])
@@ -467,12 +471,13 @@ def save2database(paper_list : list[dict], output_dir : str):
                       year,
                       citation,
                       review_score,
-                      discipline)
+                      discipline,
+                      keyword)
 
         # Insert query
         query = '''
-            INSERT INTO papers (id, title, authors, cite_papers, abstract, year, citation, reviews, discipline)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO papers (id, title, authors, cite_papers, abstract, year, citation, reviews, discipline, keyword)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
 
         # Execute the query with user data
