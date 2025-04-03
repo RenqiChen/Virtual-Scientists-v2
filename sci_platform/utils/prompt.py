@@ -106,7 +106,9 @@ class Prompts:
     Be cautious and realistic on your ratings. This JSON will be automatically parsed, so ensure the format is precise. You only need to output one topic."""
 
     to_exit_discussion = """You are part of a research team that is about to write a research paper. 
-                            The topic of the project is [topic]. Based on your interest in this topic and your professional background, decide whether you want to continue being part of this team or not. 
+                            The topic of the project is [topic]. Based on your interest in this topic and your professional background, decide whether you want to continue being part of this team or not.
+                            Note that if you are familiar with this topic, you can choose to stay in the team.
+                            If you are not familiar with this topic, you can choose to quit the team. 
                             Please choose one of the following actions and provide a brief explanation for your decision.
                             Action1: Stay in the team because you find the topic engaging.
                             Action2: Leave the team because the topic does not appeal to you.

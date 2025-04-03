@@ -144,6 +144,10 @@ class Platform:
         self.test_time = test_time
         self.load_time = load_time
         folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}"
+
+        if os.path.exists(folder_path):
+            os.system(f"rm -rf {folder_path}")
+
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
             subfolders = ["paper", "faiss", "team"]
@@ -151,6 +155,9 @@ class Platform:
                 sub_path = os.path.join(folder_path, sub)
                 if not os.path.exists(sub_path):
                     os.makedirs(sub_path)
+
+        # dict for paper citation
+        self.paper_citation_list = {}
 
         # check if agent_num is valid
         if self.agent_num is None:
@@ -286,6 +293,11 @@ class Platform:
         print(self.origin_len)
         print(len(self.paper_dicts))
         print(self.gpu_index.ntotal)
+
+        # init paper citation dict
+        for paper in self.paper_dicts:
+            self.paper_citation_list[paper['id']] = paper['citation']
+
         # self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
@@ -381,16 +393,16 @@ class Platform:
             arr += 1
         # sample from gaussian distribution
         elif self.explore == 'gaussian':
-            random_values = np.random.normal(loc=1, scale=1, size=arr.shape)
+            random_values = np.random.normal(loc=0.05, scale=0.05, size=arr.shape)
             random_values = np.abs(random_values)
-            random_values[random_values > 10] = 10
+            random_values[random_values > 0.1] = 0.1
             arr += random_values
         else:
             # extract the index that is not 0, 2-jump
             arr_2 = np.nonzero(arr)[0]
             for i in arr_2:
                 for j in range(len(self.adjacency_matrix)):
-                    arr[j] = arr[j] + 0.1*self.adjacency_matrix[i, j]
+                    arr[j] = arr[j] + 0.3*self.adjacency_matrix[i, j]
         arr[agent_index] = 0
         probabilities = arr / np.sum(arr)
 
@@ -453,8 +465,8 @@ class Platform:
         # connetion between collaborators will be closer
         for member in team_dic.teammate:
             if int(member[9:])!=self.random_indices[agent_index]:
-                self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]=self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]+0.2
-                self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]=self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]+0.2
+                self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]=self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]+1
+                self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]=self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]+1
         # summary current teams in memory
         summary_select = await scientists[agent_index].step(BaseMessage.make_user_message(
             content=team_description_detail(self.team_pool[agent_index], self.agent_pool, self.over_state),
@@ -482,7 +494,7 @@ class Platform:
             agent_list.append(agent_id.role_name)
         return agent_list
 
-    def reference_paper(self, query_vector, cite_number, epoch):
+    async def reference_paper(self, query_vector, cite_number, epoch):
         D, I = self.gpu_index.search(query_vector, cite_number)
 
         paper_use = []
@@ -502,6 +514,52 @@ class Platform:
             paper_reference = paper_reference+"Title: "+paper_index['title']+"\n"
             paper_reference = paper_reference+"Abstract: "+paper_index['abstract']+"}"+"\n"
         return paper_reference, I[0]
+    
+
+    async def reference_paper_alignment(self, query_vector, cite_number, epoch):
+        D, I = self.gpu_index.search(query_vector, 2*cite_number)
+        citation_candidate = I[0]
+
+        # filter the paper depend on citation number, the higher citation with higher probability to be selected
+        probabilities = []
+        if len(citation_candidate)>cite_number:
+            for id in citation_candidate:
+                citation = self.paper_citation_list[int(id)]
+                if citation<=0:
+                    citation = 1
+                if citation>100:
+                    citation = 100
+                citation = citation/np.sqrt(1+epoch-self.paper_dicts[int(id)]['year'])
+                probabilities.append(citation)
+            probabilities = probabilities/np.sum(probabilities)
+            probabilities = np.array(probabilities)
+
+            selected_indices = np.random.choice(len(citation_candidate), size=cite_number, p=probabilities, replace=False)
+            citation_candidate = citation_candidate[selected_indices]
+        else:
+            citation_candidate = citation_candidate[:cite_number]
+        # print(f'----------------validate------------------{citation_candidate}')
+        # print(f'-------------------------------validate--------------------{len(self.paper_citation_list)}')
+        # print(f'-------------------------------validate--------------------{len(self.paper_dicts)}')
+        paper_use = []
+        for id in range(len(citation_candidate)):
+            if epoch<=self.paper_dicts[citation_candidate[id]]['year']:
+                continue
+            paper_title = self.paper_dicts[citation_candidate[id]]['title']
+            paper_abstract = self.paper_dicts[citation_candidate[id]]['abstract']
+            paper_index = {}
+            paper_index['title'] = paper_title
+            paper_index['abstract'] = paper_abstract
+            paper_use.append(paper_index)
+            self.paper_citation_list[citation_candidate[id]] = self.paper_citation_list[citation_candidate[id]]+1
+            self.paper_dicts[citation_candidate[id]]['citation'] = self.paper_dicts[citation_candidate[id]]['citation']+1
+        paper_reference = ""
+        for id in range(len(paper_use)):
+            paper_index = paper_use[id]
+            paper_reference = paper_reference+"Paper {}:".format(id+1)+"\n"
+            paper_reference = paper_reference+"Title: "+paper_index['title']+"\n"
+            paper_reference = paper_reference+"Abstract: "+paper_index['abstract']+"}"+"\n"
+        return paper_reference, citation_candidate
 
     def reference_author(self, key_string, cite_number):
         query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)

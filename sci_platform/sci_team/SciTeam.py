@@ -343,7 +343,7 @@ class Team:
                 query_vector = np.random.rand(1, 1024)
             else:
                 query_vector = np.array([query_vector.data[0].embedding])
-        paper_reference, cite_paper = platform.reference_paper(query_vector, platform.cite_number, self.epoch)
+        paper_reference, cite_paper = await platform.reference_paper_alignment(query_vector, platform.cite_number, self.epoch)
 
         for turn in range(group_max_discuss_iteration):
             # discuss the idea
@@ -386,7 +386,7 @@ class Team:
                         idea_key_prompt = BaseMessage.make_user_message(role_name="user", content=idea_key)
                         query_vector = await teammate[0].embed_step(idea_key_prompt)
                         query_vector = np.array([query_vector.data[0].embedding])
-                    paper_reference, cite_paper_new = platform.reference_paper(query_vector, platform.cite_number, self.epoch)
+                    paper_reference, cite_paper_new = await platform.reference_paper_alignment(query_vector, platform.cite_number, self.epoch)
 
                 else:
                     paper_reference=''
@@ -481,7 +481,7 @@ class Team:
                     title_prompt = BaseMessage.make_user_message(role_name="user", content=title)
                     query_vector = await teammate[0].embed_step(title_prompt)
                     query_vector = np.array([query_vector.data[0].embedding])
-                _, related_paper = platform.reference_paper(query_vector, cite_number, self.epoch)
+                _, related_paper = await platform.reference_paper(query_vector, cite_number, self.epoch)
 
             related_papers = list(set(related_papers).union(related_paper))
 
@@ -796,7 +796,7 @@ class Team:
             file_dict['title']=title
             file_dict['abstract']=abstract
             file_dict['year']=self.epoch
-            file_dict['citation']=-1
+            file_dict['citation']=0
             file_dict['id'] = len(platform.paper_dicts)
             file_dict['authors'] = self.teammate
             file_dict['cite_papers'] = self.citation_id
@@ -804,6 +804,7 @@ class Team:
             file_dict['discipline'] = discipline
             file_dict['keywords'] = keywords
             platform.paper_dicts.append(file_dict)
+            platform.paper_citation_list[file_dict['id']] = 0
             # add embedding into list
             embedding_list = []
 
@@ -864,7 +865,7 @@ class Team:
                     file_dict['title']=title
                     file_dict['abstract']=abstract
                     file_dict['year']=self.epoch
-                    file_dict['citation']=-1
+                    file_dict['citation']=0
                     file_dict['id'] = len(platform.paper_dicts)
                     file_dict['authors'] = self.teammate
                     file_dict['cite_papers'] = self.citation_id
@@ -872,6 +873,7 @@ class Team:
                     file_dict['discipline'] = discipline
                     file_dict['keywords'] = keywords
                     platform.paper_dicts.append(file_dict)
+                    platform.paper_citation_list[file_dict['id']] = 0
                     # add embedding into list
                     embedding_list = []
 

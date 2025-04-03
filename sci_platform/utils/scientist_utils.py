@@ -305,7 +305,7 @@ def read_txt_files_as_dict(folder_path):
                     else:
                         file_dict['abstract']=file_dict_old['abstract']
                     file_dict['year']=-1
-                    file_dict['citation']=file_dict_old['citation']
+                    file_dict['citation']=int(file_dict_old['citation'])
                     file_dict['id'] = id
                     file_dict['authors'] = None
                     file_dict['cite_papers'] = None
@@ -341,7 +341,7 @@ def read_txt_files_as_dict_continue(folder_path):
                     else:
                         file_dict['abstract']=file_dict_old['abstract']
                     file_dict['year']=file_dict_old['year']
-                    file_dict['citation']=file_dict_old['citation']
+                    file_dict['citation']=int(file_dict_old['citation'])
                     file_dict['id'] = file_dict_old['id']
                     file_dict['authors'] = file_dict_old['authors']
                     file_dict['cite_papers'] = file_dict_old['cite_papers']
