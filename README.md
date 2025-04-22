@@ -13,7 +13,7 @@ Install dependencies of the basic multi-agent framework [CAMEL](https://github.c
 ```
 cd camel-master
 pip install --upgrade pip setuptools
-pip install -e .  # This will install dependencies as specified in pyproject.toml
+pip install -e .  # This will install dependencies as specified in pyproject.toml and install camel in editable mode
 ```
 Then, install the following necessary packages.
 ```
