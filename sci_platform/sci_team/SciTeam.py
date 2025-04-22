@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import random
+import heapq
 sys.path.append('../camel-master')
 
 from camel.messages import BaseMessage
@@ -148,6 +149,29 @@ class Team:
         # get teammate
         teammate = platform.id_to_agent(self.teammate)
 
+        # current topic hot
+        # get the 5 highest citation papers from old_hot
+        if len(platform.old_hot) > 5:
+            top_5_keys = heapq.nlargest(5, platform.old_hot, key=platform.old_hot.get)
+            hot_content = ""
+            for key in top_5_keys:
+                hot_content += f"Paper {key}: {platform.paper_dicts[key]['abstract']}\n"
+
+            hot_topic_prompt = Prompts.to_ask_hot_topic.replace("[hot topic]", hot_content)
+            hot_topic_prompt = BaseMessage.make_user_message(role_name="user", content=hot_topic_prompt)
+            try:
+                hot_topic_reply = await teammate[0].step(hot_topic_prompt)
+                hot_topic_reply = hot_topic_reply.msg.content
+                hot_topic = extract_between_json_tags(hot_topic_reply, num=1)
+                hot_topic = strip_non_letters(hot_topic.split("Current Hotspots")[1])
+                print("Have hot topic")
+                print(f"-----------------hot topic:{hot_topic}-------------------")
+            except:
+                hot_topic = "No hot topic"
+                print('No response_hot_topic')
+        else:
+            hot_topic = "No hot topic"
+
         # Memoryies
         # get team_history, previous group discussion summarizations
         team_memories = self.memory
@@ -177,11 +201,17 @@ class Team:
                     continue
                 else:
                     said.append(agent.role_name)
-
-                agent_prompt = f"Current team members are {','.join(self.teammate)}.\n" + \
-                               self.format_memories(None, None, team_memories) + \
-                               prompt + \
-                               self.format_memories(current_memories, previous_memories, None)
+                if len(hot_topic) > 50:
+                    agent_prompt = f"Current team members are {','.join(self.teammate)}.\n" + \
+                                f"Current hot topic is {hot_topic}.\n" + \
+                                self.format_memories(None, None, team_memories) + \
+                                prompt + \
+                                self.format_memories(current_memories, previous_memories, None)
+                else:
+                    agent_prompt = f"Current team members are {','.join(self.teammate)}.\n" + \
+                                self.format_memories(None, None, team_memories) + \
+                                prompt + \
+                                self.format_memories(current_memories, previous_memories, None)
                 format_agent_prompt = BaseMessage.make_user_message(role_name="user", content=agent_prompt)
 
                 # add reply to turn_history
@@ -271,7 +301,11 @@ class Team:
             topic_prompt = Prompts.to_ask_topic.replace("[history_prompt]", self.format_memories(current_memories, previous_memories, team_memories))
             format_topic_prompt = BaseMessage.make_user_message(role_name="user", content=topic_prompt)
             # answer
-            topic = await platform.id2agent[self.teammate[0]].step(format_topic_prompt)
+            if platform.leader_mode=='normal':
+                topic = await platform.id2agent[self.teammate[0]].step(format_topic_prompt)
+            else:
+                leader_index=random.randint(0, len(self.teammate)-1)
+                topic = await platform.id2agent[self.teammate[leader_index]].step(format_topic_prompt)
             topic = topic.msg
             self.log_dialogue(self.teammate[0], topic.content)
             try:
@@ -510,6 +544,8 @@ class Team:
                     reply = reply.msg.content
                 except:
                     reply = "```No Response_novelty```"
+                    # print(f"---------teamname{self.team_name}-------{format_idea_novelty_prompt}")
+                    # print(f"---------teamname{self.team_name}-------No Response_novelty")
                 # self.log_dialogue('user', idea_novelty_prompt)
                 self.log_dialogue(agent.role_name, reply)
                 old_idea = extract_between_json_tags(reply, num=1)
@@ -574,7 +610,8 @@ class Team:
                     reply = reply.msg
                 except:
                     reply = None
-                    print('No Response_abstract')
+                    # print(f'---------teamname{self.team_name}-------{format_abstract_prompt}')
+                    # print(f'---------teamname{self.team_name}-------No Response_abstract')
                 self.log_dialogue(teammate[agent_id].role_name, reply.content)
                 old_old_abstract = old_abstract
                 old_abstract = extract_between_json_tags(reply.content, num=1)
@@ -602,9 +639,9 @@ class Team:
             abstract_prompt = BaseMessage.make_user_message(role_name="user", content=Abstract)
             query_vector = await teammate[0].embed_step(abstract_prompt)
             query_vector = np.array([query_vector.data[0].embedding])
-
-        D_future, I_future = platform.gpu_future_index.search(query_vector, int(platform.cite_number/2))
-        D, I = platform.gpu_index.search(query_vector, int(platform.cite_number/2))
+        cite_number_temp=8
+        D_future, I_future = platform.gpu_future_index.search(query_vector, int(cite_number_temp/2))
+        D, I = platform.gpu_index.search(query_vector, int(cite_number_temp/2))
 
         for id in range(len(I_future[0])):
             paper_title = platform.paper_future_dicts[I_future[0][id]]['title']
@@ -677,18 +714,21 @@ class Team:
         if len(related_papers)>0:
             abstract_check_prompt = Prompts.prompt_abstract_check.replace("[Insert your abstract here]", old_abstract)
             cite_abstract = ""
-            # word = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']
-            word = ['A', 'B', 'C', 'D']
+            word = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T']
             split_keywords = []
-            for paper_id in range(int(platform.cite_number/2), len(related_papers)):
-                cite_abstract = cite_abstract + str(paper_id-int(platform.cite_number/2)+1) + ". Abstract {}: ".format(word[paper_id-int(platform.cite_number/2)]) + "Title: " + related_papers[paper_id]['title'] + "\n" + "Abstract: " + related_papers[paper_id]['abstract'] + "\n"
-                split_keywords.append('Written Abstract vs {}'.format(word[paper_id-int(platform.cite_number/2)]))
+            for paper_id in range(int(cite_number_temp/2), len(related_papers)):
+                cite_abstract = cite_abstract + str(paper_id-int(cite_number_temp/2)+1) + ". Abstract {}: ".format(word[paper_id-int(cite_number_temp/2)]) + "Title: " + related_papers[paper_id]['title'] + "\n" + "Abstract: " + related_papers[paper_id]['abstract'] + "\n"
+                split_keywords.append('Written Abstract vs {}'.format(word[paper_id-int(cite_number_temp/2)]))
             abstract_check_prompt = abstract_check_prompt.replace("[Insert ref abstract here]", cite_abstract)
             abstract_check_prompt = abstract_check_prompt + "\n" + Prompts.prompt_response_check
 
             format_abstract_check_prompt = BaseMessage.make_user_message(role_name="user", content=abstract_check_prompt)
             try:
-                reply = await teammate[0].step(format_abstract_check_prompt)
+                if platform.leader_mode=='normal':
+                    leader_index=0
+                else:
+                    leader_index=random.randint(0, len(self.teammate)-1)
+                reply = await teammate[leader_index].step(format_abstract_check_prompt)
                 reply = reply.msg
             except:
                 reply = None
@@ -701,7 +741,7 @@ class Team:
             abstract_use = True
             try:
                 for split_keyword in split_keywords:
-                    if metric[split_keyword]>=90:
+                    if metric[split_keyword]>=96:
                         abstract_use = False
                         self.abstract = old_abstract
                         break

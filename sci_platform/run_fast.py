@@ -18,10 +18,16 @@ def parse_arguments():
     # )
     # checkpoint
     parser.add_argument(
+        "--leader_mode",
+        type=str,
+        default=deploy_config.leader_mode,
+        help="who is the leader",
+    )
+    parser.add_argument(
         "--checkpoint",
         type=bool,
         default=deploy_config.checkpoint,
-        help="Whether use checkpoint.",
+        help="Whether use checkpoint",
     )
     # test_time
     parser.add_argument(
@@ -131,6 +137,7 @@ if __name__ == '__main__':
             checkpoint= args.checkpoint,
             test_time = args.test_time,
             load_time = args.load_time,
+            leader_mode=args.leader_mode,
         )
         asyncio.run(platform_example.running(args.epochs))
         # try:

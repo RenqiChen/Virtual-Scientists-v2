@@ -72,7 +72,7 @@ class Platform:
                  check_iter: int = 5,
                  review_num: int = 2,
                  max_teammember: int = 3,
-                 cite_number: int = 8,
+                 cite_number: int = 12,
                  default_mark: int = 4,
                  skip_check: bool = False,
                  over_state: int = 7,
@@ -83,6 +83,7 @@ class Platform:
                  checkpoint: bool = True,
                  test_time: str = 'None',
                  load_time: str = 'None',
+                 leader_mode: str = 'normal', # 'normal' or 'random'
                  ):
 
         author_folder_path = os.path.join(root_dir, author_folder_path)
@@ -125,6 +126,7 @@ class Platform:
         self.explore = explore
         self.team_organization = team_organization
         self.unactivation = 0
+        self.leader_mode = leader_mode
 
         # for quality, the team of one member will think more times
         self.think_times = max_teammember+1
@@ -150,7 +152,7 @@ class Platform:
 
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-            subfolders = ["paper", "faiss", "team"]
+            subfolders = ["paper", "faiss", "team","citation"]
             for sub in subfolders:
                 sub_path = os.path.join(folder_path, sub)
                 if not os.path.exists(sub_path):
@@ -219,6 +221,8 @@ class Platform:
         # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
         self.reviewer_pool = self.init_reviewer_async(self.inference_channel_reviewer, self.embed_inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
+        self.old_hot={}
+        self.current_hot={}
         for agent in self.agent_pool:
             self.id2agent[agent.role_name] = agent
         if not self.checkpoint:
@@ -248,6 +252,10 @@ class Platform:
                 dict = eval(file_content)
                 self.team_count=dict['team_count']
                 self.random_indices=dict['team_indices']
+            with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/citation/citation.txt", 'r') as file:
+                for line in file:
+                    citation_count = json.loads(line.strip())
+                    self.old_hot[int(citation_count['id'])] = int(citation_count['citation'])
             self.team_pool=[]
             for team_leader in range(len(self.random_indices)):
                 with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/team/{team_leader}.txt", 'r') as file:
@@ -307,7 +315,7 @@ class Platform:
             role_name=name,
             content=f'You are {name}. ' + Prompts.prompt_review_system,
         )
-        agent = SciAgent(prompt, model=model, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=32768, message_window_size = self.recent_n_agent_mem_for_retrieve)
         return agent
 
     def init_reviewer_async(self, channel, embed_channel, count):
@@ -319,7 +327,7 @@ class Platform:
                 role_name=name,
                 content=f'You are {name}. ' + Prompts.prompt_review_system,
             )
-            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=16384)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=32768)
             agents.append(agent)
         return agents
 
@@ -332,7 +340,7 @@ class Platform:
             role_name=name,
             content=prompt,
         )
-        agent = SciAgent(prompt, model=model, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
+        agent = SciAgent(prompt, model=model, token_limit=32768, message_window_size = self.recent_n_agent_mem_for_retrieve)
 
         return agent
 
@@ -350,7 +358,7 @@ class Platform:
                 role_name=name,
                 content=prompt,
             )
-            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=16384, message_window_size = self.recent_n_agent_mem_for_retrieve)
+            agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=32768, message_window_size = self.recent_n_agent_mem_for_retrieve)
             agents.append(agent)
 
         return agents
@@ -393,9 +401,9 @@ class Platform:
             arr += 1
         # sample from gaussian distribution
         elif self.explore == 'gaussian':
-            random_values = np.random.normal(loc=0.05, scale=0.05, size=arr.shape)
+            random_values = np.random.normal(loc=0.005, scale=0.005, size=arr.shape)
             random_values = np.abs(random_values)
-            random_values[random_values > 0.1] = 0.1
+            random_values[random_values > 0.01] = 0.01
             arr += random_values
         else:
             # extract the index that is not 0, 2-jump
@@ -499,10 +507,10 @@ class Platform:
 
         paper_use = []
         for id in range(len(I[0])):
-            if epoch<=self.paper_dicts[I[0][id]]['year']:
+            if epoch<=self.paper_dicts[I[0][int(id)]]['year']:
                 continue
-            paper_title = self.paper_dicts[I[0][id]]['title']
-            paper_abstract = self.paper_dicts[I[0][id]]['abstract']
+            paper_title = self.paper_dicts[I[0][int(id)]]['title']
+            paper_abstract = self.paper_dicts[I[0][int(id)]]['abstract']
             paper_index = {}
             paper_index['title'] = paper_title
             paper_index['abstract'] = paper_abstract
@@ -553,6 +561,11 @@ class Platform:
             paper_use.append(paper_index)
             self.paper_citation_list[citation_candidate[id]] = self.paper_citation_list[citation_candidate[id]]+1
             self.paper_dicts[citation_candidate[id]]['citation'] = self.paper_dicts[citation_candidate[id]]['citation']+1
+            # update self.current_hot
+            if citation_candidate[id] in self.current_hot:
+                self.current_hot[citation_candidate[id]] = self.current_hot[citation_candidate[id]]+1
+            else:
+                self.current_hot[citation_candidate[id]] = 1
         paper_reference = ""
         for id in range(len(paper_use)):
             paper_index = paper_use[id]
@@ -639,6 +652,21 @@ class Platform:
                     os.remove(path)
                 for team_index in self.team_pool[team_leader]:
                     team_index.save_to_file(path)
+            
+            # save citation for paper
+            citation_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/citation/citation.txt"
+            if len(self.current_hot)>0:
+                if os.path.exists(citation_path):
+                    os.remove(citation_path)
+                with open(citation_path, "a", encoding="utf-8") as f:
+                    for paper_id, citation in self.current_hot.items():
+                        citation_count = {
+                            'id': str(paper_id),
+                            'citation': str(citation)
+                        }
+                        f.write(json.dumps(citation_count) + "\n")
+                self.old_hot = self.current_hot
+            self.current_hot = {}
 
 
         await self.infere.stop()

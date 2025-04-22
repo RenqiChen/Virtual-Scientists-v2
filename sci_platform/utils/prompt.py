@@ -124,6 +124,24 @@ class Prompts:
     You are an ambitious scientist who is looking to propose a new idea that will contribute significantly to the field.
     Improve the existing idea or come up with the next impactful and creative idea for publishing a paper that will contribute significantly to the field by integrating your own knowledge and insights with the information provided.
     Improve this idea or come up with the next impactful and creative idea for publishing a paper that will contribute significantly to the field by integrating your own knowledge and insights with the information provided."""+"\n"
+
+    to_ask_hot_topic = """
+    Please summarize the research hotspots based on the abstracts of the following 5 articles:  
+    [Abstracts]
+    
+    **Requirements:**  
+    - Identify the core research focus, methodologies, and key findings of each abstract.  
+    - Highlight common research hotspots across all five articles, such as emerging trends, shared challenges, or innovative approaches.  
+    - Analyze complementary aspects or gaps between the studies.  
+    - Deliver a concise summary (maximum 300 words) with a focus on key insights and overarching themes.  
+
+    Please respond in the following format:
+    Thought: <THOUGHT>
+    Hotspots: ```json<JSON>```
+    In <THOUGHT>, explain why you selected these hotspots based on the requirements.
+    In <JSON>, respond in JSON format with ONLY the following field: - “Current Hotspots”: [Hotspots].
+    This JSON will be automatically parsed, so ensure the format is precise.
+    """
     
     prompt_topic = ("When proposing your idea, please elaborate on the proposed topic: {}\n")
     

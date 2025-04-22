@@ -72,7 +72,7 @@ class Platform:
                  check_iter: int = 5,
                  review_num: int = 2,
                  max_teammember: int = 3,
-                 cite_number: int = 8,
+                 cite_number: int = 12,
                  default_mark: int = 4,
                  skip_check: bool = False,
                  over_state: int = 7,
@@ -83,6 +83,7 @@ class Platform:
                  checkpoint: bool = True,
                  test_time: str = 'None',
                  load_time: str = 'None',
+                 leader_mode: str = 'normal', # 'normal' or 'random'
                  ):
 
         author_folder_path = os.path.join(root_dir, author_folder_path)
@@ -125,6 +126,7 @@ class Platform:
         self.explore = explore
         self.team_organization = team_organization
         self.unactivation = 0
+        self.leader_mode = leader_mode
 
         # for quality, the team of one member will think more times
         self.think_times = max_teammember+1
@@ -144,13 +146,20 @@ class Platform:
         self.test_time = test_time
         self.load_time = load_time
         folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}"
+
+        if os.path.exists(folder_path):
+            os.system(f"rm -rf {folder_path}")
+
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-            subfolders = ["paper", "faiss", "team"]
+            subfolders = ["paper", "faiss", "team","citation"]
             for sub in subfolders:
                 sub_path = os.path.join(folder_path, sub)
                 if not os.path.exists(sub_path):
                     os.makedirs(sub_path)
+
+        # dict for paper citation
+        self.paper_citation_list = {}
 
         # check if agent_num is valid
         if self.agent_num is None:
@@ -212,6 +221,8 @@ class Platform:
         # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
         self.reviewer_pool = self.init_reviewer_async(self.inference_channel_reviewer, self.embed_inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
+        self.old_hot={}
+        self.current_hot={}
         for agent in self.agent_pool:
             self.id2agent[agent.role_name] = agent
         if not self.checkpoint:
@@ -241,6 +252,10 @@ class Platform:
                 dict = eval(file_content)
                 self.team_count=dict['team_count']
                 self.random_indices=dict['team_indices']
+            with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/citation/citation.txt", 'r') as file:
+                for line in file:
+                    citation_count = json.loads(line.strip())
+                    self.old_hot[citation_count['id']] = citation_count['citation']
             self.team_pool=[]
             for team_leader in range(len(self.random_indices)):
                 with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/team/{team_leader}.txt", 'r') as file:
@@ -272,19 +287,25 @@ class Platform:
 
         self.paper_dicts = read_txt_files_as_dict(self.paper_folder_path)
         self.epoch = 0
+        self.origin_len = len(self.paper_dicts)
         if self.checkpoint:
             self.continue_paper_folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/paper"
             self.continue_folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/faiss"
             self.continue_paper_dicts = read_txt_files_as_dict_continue(self.continue_paper_folder_path)
             self.paper_dicts = self.paper_dicts+self.continue_paper_dicts
 
-            cpu_index = faiss.read_index(os.path.join(self.continue_folder_path, 'faiss_index_OAG_1.index'))  # 加载索引
+            cpu_index = faiss.read_index(os.path.join(self.continue_folder_path, 'faiss_index_OAG.index'))  # 加载索引
             res = faiss.StandardGpuResources()  # 为 GPU 资源分配
             self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
             self.epoch = self.paper_dicts[-1]['year']+1
-        self.origin_len = len(self.paper_dicts)
         print(self.origin_len)
+        print(len(self.paper_dicts))
         print(self.gpu_index.ntotal)
+
+        # init paper citation dict
+        for paper in self.paper_dicts:
+            self.paper_citation_list[paper['id']] = paper['citation']
+
         # self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
@@ -380,16 +401,16 @@ class Platform:
             arr += 1
         # sample from gaussian distribution
         elif self.explore == 'gaussian':
-            random_values = np.random.normal(loc=1, scale=1, size=arr.shape)
+            random_values = np.random.normal(loc=0.005, scale=0.005, size=arr.shape)
             random_values = np.abs(random_values)
-            random_values[random_values > 10] = 10
+            random_values[random_values > 0.01] = 0.01
             arr += random_values
         else:
             # extract the index that is not 0, 2-jump
             arr_2 = np.nonzero(arr)[0]
             for i in arr_2:
                 for j in range(len(self.adjacency_matrix)):
-                    arr[j] = arr[j] + 0.1*self.adjacency_matrix[i, j]
+                    arr[j] = arr[j] + 0.3*self.adjacency_matrix[i, j]
         arr[agent_index] = 0
         probabilities = arr / np.sum(arr)
 
@@ -452,8 +473,8 @@ class Platform:
         # connetion between collaborators will be closer
         for member in team_dic.teammate:
             if int(member[9:])!=self.random_indices[agent_index]:
-                self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]=self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]+0.2
-                self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]=self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]+0.2
+                self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]=self.adjacency_matrix[self.random_indices[agent_index], int(member[9:])]+1
+                self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]=self.adjacency_matrix[int(member[9:]), self.random_indices[agent_index]]+1
         # summary current teams in memory
         summary_select = await scientists[agent_index].step(BaseMessage.make_user_message(
             content=team_description_detail(self.team_pool[agent_index], self.agent_pool, self.over_state),
@@ -481,15 +502,15 @@ class Platform:
             agent_list.append(agent_id.role_name)
         return agent_list
 
-    def reference_paper(self, query_vector, cite_number, epoch):
+    async def reference_paper(self, query_vector, cite_number, epoch):
         D, I = self.gpu_index.search(query_vector, cite_number)
 
         paper_use = []
         for id in range(len(I[0])):
-            if epoch<=self.paper_dicts[I[0][id]]['year']:
+            if epoch<=self.paper_dicts[I[0][int(id)]]['year']:
                 continue
-            paper_title = self.paper_dicts[I[0][id]]['title']
-            paper_abstract = self.paper_dicts[I[0][id]]['abstract']
+            paper_title = self.paper_dicts[I[0][int(id)]]['title']
+            paper_abstract = self.paper_dicts[I[0][int(id)]]['abstract']
             paper_index = {}
             paper_index['title'] = paper_title
             paper_index['abstract'] = paper_abstract
@@ -501,6 +522,57 @@ class Platform:
             paper_reference = paper_reference+"Title: "+paper_index['title']+"\n"
             paper_reference = paper_reference+"Abstract: "+paper_index['abstract']+"}"+"\n"
         return paper_reference, I[0]
+    
+
+    async def reference_paper_alignment(self, query_vector, cite_number, epoch):
+        D, I = self.gpu_index.search(query_vector, 2*cite_number)
+        citation_candidate = I[0]
+
+        # filter the paper depend on citation number, the higher citation with higher probability to be selected
+        probabilities = []
+        if len(citation_candidate)>cite_number:
+            for id in citation_candidate:
+                citation = self.paper_citation_list[int(id)]
+                if citation<=0:
+                    citation = 1
+                if citation>100:
+                    citation = 100
+                citation = citation/np.sqrt(1+epoch-self.paper_dicts[int(id)]['year'])
+                probabilities.append(citation)
+            probabilities = probabilities/np.sum(probabilities)
+            probabilities = np.array(probabilities)
+
+            selected_indices = np.random.choice(len(citation_candidate), size=cite_number, p=probabilities, replace=False)
+            citation_candidate = citation_candidate[selected_indices]
+        else:
+            citation_candidate = citation_candidate[:cite_number]
+        # print(f'----------------validate------------------{citation_candidate}')
+        # print(f'-------------------------------validate--------------------{len(self.paper_citation_list)}')
+        # print(f'-------------------------------validate--------------------{len(self.paper_dicts)}')
+        paper_use = []
+        for id in range(len(citation_candidate)):
+            if epoch<=self.paper_dicts[citation_candidate[id]]['year']:
+                continue
+            paper_title = self.paper_dicts[citation_candidate[id]]['title']
+            paper_abstract = self.paper_dicts[citation_candidate[id]]['abstract']
+            paper_index = {}
+            paper_index['title'] = paper_title
+            paper_index['abstract'] = paper_abstract
+            paper_use.append(paper_index)
+            self.paper_citation_list[citation_candidate[id]] = self.paper_citation_list[citation_candidate[id]]+1
+            self.paper_dicts[citation_candidate[id]]['citation'] = self.paper_dicts[citation_candidate[id]]['citation']+1
+            # update self.current_hot
+            if citation_candidate[id] in self.current_hot:
+                self.current_hot[citation_candidate[id]] = self.current_hot[citation_candidate[id]]+1
+            else:
+                self.current_hot[citation_candidate[id]] = 1
+        paper_reference = ""
+        for id in range(len(paper_use)):
+            paper_index = paper_use[id]
+            paper_reference = paper_reference+"Paper {}:".format(id+1)+"\n"
+            paper_reference = paper_reference+"Title: "+paper_index['title']+"\n"
+            paper_reference = paper_reference+"Abstract: "+paper_index['abstract']+"}"+"\n"
+        return paper_reference, citation_candidate
 
     def reference_author(self, key_string, cite_number):
         query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
@@ -564,7 +636,7 @@ class Platform:
             # save faiss for similarity
             temp_index = faiss.index_gpu_to_cpu(self.gpu_index)
             file_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/paper"
-            faiss.write_index(temp_index, f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/faiss/faiss_index_OAG_{epoch}.index")
+            faiss.write_index(temp_index, f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/faiss/faiss_index_OAG.index")
             
             # save txt for paper
             write_txt_file_as_dict(file_path, self.paper_dicts, self.origin_len)
@@ -580,6 +652,20 @@ class Platform:
                     os.remove(path)
                 for team_index in self.team_pool[team_leader]:
                     team_index.save_to_file(path)
+            
+            # save citation for paper
+            citation_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/citation/citation.txt"
+            if os.path.exists(citation_path):
+                os.remove(citation_path)
+            with open(citation_path, "a", encoding="utf-8") as f:
+                for paper_id, citation in self.current_hot.items():
+                    citation_count = {
+                        'id': paper_id,
+                        'citation': citation
+                    }
+                    f.write(json.dumps(citation_count) + "\n")
+            self.old_hot = self.current_hot
+            self.current_hot = {}
 
 
         await self.infere.stop()
