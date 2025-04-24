@@ -40,29 +40,17 @@ class Platform:
     r"""Platform."""
 
     def __init__(self,
-                 model_configuration: str = './configs/model_configs.json',
                  agent_num: int = 1,
                  ips: list = ['127.0.0.1'],
                  port: list = [11434],
-                 #  root_dir: str = '/home/bingxing2/ailab/group/ai4agr/shy/s4s',
-                 root_dir: str = '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG',
-
-                 #  author_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books",
+                 model_name: str='llama3.1',
                  author_folder_path: str = 'books_OAG_10000_after',
-                 # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/books_OAG_3169_after
-
-                 #  paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers",
                  paper_folder_path: str = 'papers_OAG',
-                 # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_OAG
-
-                 #  future_paper_folder_path: str = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers_future",
                  future_paper_folder_path: str = 'papers_future_OAG',
-                 # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/papers_future_OAG
-
-                 author_info_dir: str = 'authors',
-                 #  adjacency_matrix_dir: str = 'authors_degree_ge50_from_year2000to2010',
                  adjacency_matrix_dir: str = 'new_OAG_from_2010to2020_gt_100_citation',
-                 knowledgeBank_config_dir: str = './configs/knowledge_config.json',
+                 paper_index_path: str='faiss_index_OAG.index',
+                 author_index_path: str='faiss_index_authors.index',
+                 paper_future_index_path: str='faiss_index_OAG_future.index',
                  log_dir: str = 'logs',
                  info_dir: str = "team_info",
                  group_max_discuss_iteration: int = 2, # 6， 7
@@ -77,7 +65,6 @@ class Platform:
                  skip_check: bool = False,
                  over_state: int = 7,
                  begin_state: int = 1,
-                 inference_configs: dict[str, Any] | None = None,
                  explore: str = 'gaussian', # 'uniform' or 'gaussian' or 'history'
                  team_organization: str = 'exponential', # 'uniform' or 'gaussian' or 'exponential'
                  checkpoint: bool = True,
@@ -85,11 +72,6 @@ class Platform:
                  load_time: str = 'None',
                  leader_mode: str = 'normal', # 'normal' or 'random'
                  ):
-
-        author_folder_path = os.path.join(root_dir, author_folder_path)
-        paper_folder_path = os.path.join(root_dir, paper_folder_path)
-        future_paper_folder_path = os.path.join(root_dir, future_paper_folder_path)
-        adjacency_matrix_dir = os.path.join(root_dir, adjacency_matrix_dir)
 
         self.agent_num = agent_num
         self.port = port
@@ -131,14 +113,9 @@ class Platform:
         # for quality, the team of one member will think more times
         self.think_times = max_teammember+1
 
-        # author2paper file: dict{'authorID':[paperID1, paperID2, ...]}
-        # with open('{}/author2paper.json'.format(root_dir), 'r') as file:
-        #     self.author2paper = json.load(file)
-
         # load k-hop adjacency matrix
         self.degree_int2word = ['one', 'two', 'three', 'four', 'five']
-        # self.adjacency_matrix = np.loadtxt(
-        #     '{}/{}-hop_adj_matrix.txt'.format(self.adjacency_matrix_dir, self.degree_int2word[hop_num-1]), dtype=int)
+
         self.adjacency_matrix = np.loadtxt(
             '{}/weight_matrix.txt'.format(self.adjacency_matrix_dir), dtype=float)
         
@@ -167,23 +144,19 @@ class Platform:
         else:
             assert self.agent_num <= len(self.adjacency_matrix)
 
-        # load agentID2authorID file: dict{'agentID': 'authorID'}
-        # with open('{}/agentID2authorID.json'.format(self.adjacency_matrix_dir), 'r') as file:
-        #     self.agentID2authorID = json.load(file)
-
         self.inference_channel = Channel()
         self.embed_inference_channel = Channel()
         self.inference_channel_reviewer = Channel()
         self.embed_inference_channel_reviewer = Channel()
         self.inference_configs = {
-            'model_type': "llama3.1",
+            'model_type': model_name,
             'embed_model_type': None,
             'model_path': 'API',
             'stop_tokens': None,
             'server_url': [{'host': ip, 'ports': port if ip != '127.0.0.1' else port[:-1]} for ip in ips]
         }
         self.embed_inference_configs = {
-            'model_type': 'llama3.1',
+            'model_type': model_name,
             'embed_model_type': "mxbai-embed-large",
             'model_path': 'API',
             'stop_tokens': None,
@@ -206,19 +179,8 @@ class Platform:
             **self.embed_inference_configs,
         )
 
-        # model = ModelFactory.create(
-        #     model_platform=ModelPlatformType.INTERN,
-        #     model_type = ModelType.INTERN_VL,
-        #     embed_model_type = None,
-        #     api_key="sk-gaqeyxvrpmjondtmihuydxjevoztjgibkfmfqyhgmonhfsml",
-        #     url="https://api.siliconflow.cn/v1",
-        #     model_config_dict={"temperature": 0.4},
-        # )
-
-        # init agent pool
-        # self.agent_pool = [self.init_agent(str(agent_id), model, '/home/bingxing2/ailab/group/ai4agr/crq/SciSci/books/author_{}.txt'.format(agent_id)) for agent_id in range(len(self.adjacency_matrix))]
         self.agent_pool = self.init_agent_async(self.inference_channel, self.embed_inference_channel, self.author_info_dir, len(self.adjacency_matrix))
-        # self.reviewer_pool = [self.init_reviewer(str(agent_id), model) for agent_id in range(self.reviewer_num)]
+
         self.reviewer_pool = self.init_reviewer_async(self.inference_channel_reviewer, self.embed_inference_channel_reviewer, self.reviewer_num)
         self.id2agent = {}
         self.old_hot={}
@@ -266,21 +228,17 @@ class Platform:
                     self.team_pool.append(team_leader_list)
 
         # paper embedding list
-        # cpu_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index.index")  # 加载索引
-        cpu_index = faiss.read_index(os.path.join(root_dir, 'faiss_index_OAG.index'))
-        # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/faiss_index_OAG.index
+        cpu_index = faiss.read_index(paper_index_path)
 
         res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
 
-        cpu_authors_index = faiss.read_index(os.path.join(root_dir, 'faiss_index_authors.index'))  # 加载索引
+        cpu_authors_index = faiss.read_index(author_index_path)  # 加载索引
 
         authors_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_authors_index = faiss.index_cpu_to_gpu(authors_res, 0, cpu_authors_index)  # 将索引移到 GPU
 
-        # cpu_future_index = faiss.read_index("/home/bingxing2/ailab/group/ai4agr/crq/SciSci/faiss_index_future.index")  # 加载索引
-        cpu_future_index = faiss.read_index(os.path.join(root_dir, 'faiss_index_OAG_future.index'))
-        # /home/bingxing2/ailab/group/ai4agr/crq/SciSci/OAG/faiss_index_OAG_future.index
+        cpu_future_index = faiss.read_index(paper_future_index_path)
 
         future_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_future_index = faiss.index_cpu_to_gpu(future_res, 0, cpu_future_index)  # 将索引移到 GPU
@@ -546,9 +504,7 @@ class Platform:
             citation_candidate = citation_candidate[selected_indices]
         else:
             citation_candidate = citation_candidate[:cite_number]
-        # print(f'----------------validate------------------{citation_candidate}')
-        # print(f'-------------------------------validate--------------------{len(self.paper_citation_list)}')
-        # print(f'-------------------------------validate--------------------{len(self.paper_dicts)}')
+
         paper_use = []
         for id in range(len(citation_candidate)):
             if epoch<=self.paper_dicts[citation_candidate[id]]['year']:
@@ -595,11 +551,6 @@ class Platform:
         for team_index in range(len(self.team_pool[leader_index])):
             self.team_pool[leader_index][team_index].epoch = epoch
             await self.team_pool[leader_index][team_index].action_excution(self)
-            # if team_index==0 or self.team_pool[leader_index][team_index].state != self.over_state:
-            #     leader_team.append(self.team_pool[leader_index][team_index])
-            # if self.team_pool[leader_index][team_index].state == self.over_state:
-            #     self.team_pool[leader_index][team_index].save_team_info()
-        # self.team_pool[leader_index] = leader_team
 
     async def running(self, epochs):
         # 创建调度任务

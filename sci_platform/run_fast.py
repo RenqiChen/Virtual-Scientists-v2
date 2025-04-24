@@ -18,6 +18,12 @@ def parse_arguments():
     # )
     # checkpoint
     parser.add_argument(
+        "--model_name",
+        type=str,
+        default=deploy_config.model_name,
+        help="employed base model",
+    )
+    parser.add_argument(
         "--leader_mode",
         type=str,
         default=deploy_config.leader_mode,
@@ -127,6 +133,7 @@ if __name__ == '__main__':
         platform_example = Platform(
             root_dir = args.root_dir,
             agent_num=args.agent_num,
+            model_name=args.model_name,
             ips=args.ips,
             port=args.port,
             team_limit = args.team_limit,

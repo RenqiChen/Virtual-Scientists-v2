@@ -1,10 +1,7 @@
 #!/bin/sh
-module load compilers/cuda/12.1
-module load cudnn/8.8.1.3_cuda12.x
-module load compilers/gcc/12.2.0
-source activate mamba_ssm_cp311
+source activate virsci
 
-cd /home/bingxing2/ailab/scxlab0066/SocialScience/SciSci/ollama
+cd /Virtual-Scientist-v2/ollama # your ollama path
 CUDA_VISIBLE_DEVICES=0 OLLAMA_HOST=0.0.0.0:11434 ./ollama serve &
 CUDA_VISIBLE_DEVICES=0 OLLAMA_HOST=0.0.0.0:11435 ./ollama serve &
 CUDA_VISIBLE_DEVICES=0 OLLAMA_HOST=0.0.0.0:11436 ./ollama serve &

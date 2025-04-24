@@ -4,18 +4,19 @@ ollama_dir = "/home/bingxing2/ailab/suhaoyang/soft/new-ollama/bin"
 
 # deploy setups
 use_ollama = True
-ips = ['paraai-n32-h-01-agent-112','paraai-n32-h-01-agent-161','paraai-n32-h-01-agent-162','paraai-n32-h-01-agent-173','paraai-n32-h-01-agent-208','paraai-n32-h-01-agent-218','127.0.0.1']
+ips = ['paraai-n32-h-01-agent-112','paraai-n32-h-01-agent-126','paraai-n32-h-01-agent-161','paraai-n32-h-01-agent-162','paraai-n32-h-01-agent-173','paraai-n32-h-01-agent-218','127.0.0.1']
 port = list(range(11434, 11450))
 port4GPU = 4
 
 # exp setups
-agent_num = 3000
+agent_num = 2000
 runs = 1
 team_limit = 3
 max_discuss_iteration = 1
 max_team_member = 6
-epochs = 50
-checkpoint = True
+epochs = 30
+model_name = "llama3.1"
+checkpoint = False
 leader_mode = 'normal' 
-test_time = '0422_3000'
-load_time = '0421_2_3000'
+test_time = '0424_3000'
+load_time = '0424_3000'
