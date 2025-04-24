@@ -51,6 +51,7 @@ class Platform:
                  paper_index_path: str='faiss_index_OAG.index',
                  author_index_path: str='faiss_index_authors.index',
                  paper_future_index_path: str='faiss_index_OAG_future.index',
+                 checkpoint_path: str='./database',
                  log_dir: str = 'logs',
                  info_dir: str = "team_info",
                  group_max_discuss_iteration: int = 2, # 6， 7
@@ -105,6 +106,7 @@ class Platform:
         self.log_dir = log_dir
         self.info_dir = info_dir
         self.author_folder_path = author_folder_path
+        self.checkpoint_path = checkpoint_path
         self.explore = explore
         self.team_organization = team_organization
         self.unactivation = 0
@@ -122,7 +124,9 @@ class Platform:
         self.checkpoint = checkpoint
         self.test_time = test_time
         self.load_time = load_time
-        folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}"
+        if not os.path.exists(checkpoint_path):
+            os.makedirs(checkpoint_path)
+        folder_path = f"{checkpoint_path}/{self.test_time}"
 
         if os.path.exists(folder_path):
             os.system(f"rm -rf {folder_path}")
@@ -209,18 +213,18 @@ class Platform:
                 self.team_count.append(1)
                 agent_id = agent_id + 1
         else:
-            with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/team/team_preamble.txt", 'r') as file:
+            with open(f"{checkpoint_path}/{self.load_time}/team/team_preamble.txt", 'r') as file:
                 file_content = file.read()
                 dict = eval(file_content)
                 self.team_count=dict['team_count']
                 self.random_indices=dict['team_indices']
-            with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/citation/citation.txt", 'r') as file:
+            with open(f"{checkpoint_path}/{self.load_time}/citation/citation.txt", 'r') as file:
                 for line in file:
                     citation_count = json.loads(line.strip())
                     self.old_hot[int(citation_count['id'])] = int(citation_count['citation'])
             self.team_pool=[]
             for team_leader in range(len(self.random_indices)):
-                with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/team/{team_leader}.txt", 'r') as file:
+                with open(f"{checkpoint_path}/{self.load_time}/team/{team_leader}.txt", 'r') as file:
                     team_leader_list = []
                     for line in file:
                         team_index = json.loads(line.strip())
@@ -247,8 +251,8 @@ class Platform:
         self.epoch = 0
         self.origin_len = len(self.paper_dicts)
         if self.checkpoint:
-            self.continue_paper_folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/paper"
-            self.continue_folder_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.load_time}/faiss"
+            self.continue_paper_folder_path = f"{checkpoint_path}/{self.load_time}/paper"
+            self.continue_folder_path = f"{checkpoint_path}/{self.load_time}/faiss"
             self.continue_paper_dicts = read_txt_files_as_dict_continue(self.continue_paper_folder_path)
             self.paper_dicts = self.paper_dicts+self.continue_paper_dicts
 
@@ -581,13 +585,13 @@ class Platform:
             print(f'{"="*50} Epoch:{epoch} | Current Action Finished {"="*50}')
             
             # save database for statistics
-            output_dir = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/database_large.db"
+            output_dir = f"{self.checkpoint_path}/{self.test_time}/database_large.db"
             save2database(self.paper_dicts, output_dir)
 
             # save faiss for similarity
             temp_index = faiss.index_gpu_to_cpu(self.gpu_index)
-            file_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/paper"
-            faiss.write_index(temp_index, f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/faiss/faiss_index_OAG.index")
+            file_path = f"{self.checkpoint_path}/{self.test_time}/paper"
+            faiss.write_index(temp_index, f"{self.checkpoint_path}/{self.test_time}/faiss/faiss_index_OAG.index")
             
             # save txt for paper
             write_txt_file_as_dict(file_path, self.paper_dicts, self.origin_len)
@@ -595,17 +599,17 @@ class Platform:
                 'team_count': self.team_count,
                 'team_indices': self.random_indices
             }
-            with open(f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/team/team_preamble.txt", "w", encoding="utf-8") as f:
+            with open(f"{self.checkpoint_path}/{self.test_time}/team/team_preamble.txt", "w", encoding="utf-8") as f:
                 f.write(str(team_information_dict))
             for team_leader in range(len(self.random_indices)):
-                path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/team/{team_leader}.txt"
+                path = f"{self.checkpoint_path}/{self.test_time}/team/{team_leader}.txt"
                 if os.path.exists(path):
                     os.remove(path)
                 for team_index in self.team_pool[team_leader]:
                     team_index.save_to_file(path)
             
             # save citation for paper
-            citation_path = f"/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/citation/citation.txt"
+            citation_path = f"{self.checkpoint_path}/{self.test_time}/citation/citation.txt"
             if len(self.current_hot)>0:
                 if os.path.exists(citation_path):
                     os.remove(citation_path)
@@ -629,5 +633,5 @@ class Platform:
         await self.embed_inference_task,self.embed_inference_task_reviewer
 
         # save self.adjacency_matrix
-        np.savetxt(f'/home/bingxing2/ailab/scxlab0066/SocialScience/database/{self.test_time}/weight_matrix.txt', self.adjacency_matrix, fmt='%d')
+        np.savetxt(f'{self.checkpoint_path}/{self.test_time}/weight_matrix.txt', self.adjacency_matrix, fmt='%d')
     
