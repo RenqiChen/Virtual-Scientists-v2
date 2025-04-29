@@ -143,12 +143,13 @@ if __name__ == "__main__":
     beginning_epoch_id = 0 # if start with a checkpoint then this would not be 0
     max_discussion_turn = 1
     learning_rate = 0.001
+    model_type = 'llama3'
 
     sample_size = 4
     agent_num = 10 # total number of init agents
     epsilon = 0.1
 
-    output_dir = f'RL_Multi_Agent_Test_Result_{sample_size}_out_of_{agent_num}'
+    output_dir = f'RL_Multi_Agent_Test_Result_{sample_size}_out_of_{agent_num}_with_{model_type}'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -173,7 +174,7 @@ if __name__ == "__main__":
 
     model = ModelFactory.create(
         model_platform=ModelPlatformType.OLLAMA,
-        model_type="llama3",
+        model_type=model_type,
         embed_model_type = "",
         url="http://127.0.0.1:11434/v1",
         model_config_dict={"temperature": 0.4},
