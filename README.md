@@ -128,3 +128,17 @@ cd sci_platform
 bash port1.sh
 bash port2.sh
 ```
+
+## Acknowledgements
+
+This project is supported by Shanghai Artificial Intelligence Laboratory.
+
+The multi-agent framework in this work is based on the [CAMEL](https://github.com/camel-ai/camel).
+
+The concurrent distributed system in this work is based on the [OASIS](https://github.com/camel-ai/oasis).
+
+The raw data is based on the [AMiner Computer Science Dataset](https://www.aminer.cn/aminernetwork) and the [Open Academic Graph](https://open.aminer.cn/open/article?id=5965cf249ed5db41ed4f52bf).
+
+## License
+
+This repository is licensed under the [Apache-2.0 License](LICENSE/).
