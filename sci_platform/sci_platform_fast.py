@@ -49,7 +49,7 @@ class Platform:
                  future_paper_folder_path: str = 'papers_future_OAG',
                  adjacency_matrix_dir: str = 'new_OAG_from_2010to2020_gt_100_citation',
                  paper_index_path: str='faiss_index_OAG.index',
-                 author_index_path: str='faiss_index_authors.index',
+
                  paper_future_index_path: str='faiss_index_OAG_future.index',
                  checkpoint_path: str='./database',
                  log_dir: str = 'logs',
@@ -236,11 +236,6 @@ class Platform:
 
         res = faiss.StandardGpuResources()  # 为 GPU 资源分配
         self.gpu_index = faiss.index_cpu_to_gpu(res, 0, cpu_index)  # 将索引移到 GPU
-
-        cpu_authors_index = faiss.read_index(author_index_path)  # 加载索引
-
-        authors_res = faiss.StandardGpuResources()  # 为 GPU 资源分配
-        self.gpu_authors_index = faiss.index_cpu_to_gpu(authors_res, 0, cpu_authors_index)  # 将索引移到 GPU
 
         cpu_future_index = faiss.read_index(paper_future_index_path)
 
@@ -533,22 +528,6 @@ class Platform:
             paper_reference = paper_reference+"Title: "+paper_index['title']+"\n"
             paper_reference = paper_reference+"Abstract: "+paper_index['abstract']+"}"+"\n"
         return paper_reference, citation_candidate
-
-    def reference_author(self, key_string, cite_number):
-        query_vector = ollama.embeddings(model="mxbai-embed-large", prompt=key_string)
-        query_vector = np.array([query_vector['embedding']])
-        D, I = self.gpu_authors_index.search(query_vector, cite_number)
-
-        author_use = []
-        for id in range(len(I[0])):
-            author = self.author_dicts[I[0][id]]
-            author_index = process_author_text(author)
-            author_use.append(author_index)
-        author_reference = ""
-        for id in range(len(author_use)):
-            author_index = author_use[id]
-            author_reference = author_reference+author_index+"\n"
-        return author_reference
 
     async def team_running(self, epoch, leader_index):
         # leader_team=[]

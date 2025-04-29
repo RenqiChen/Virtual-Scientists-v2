@@ -53,14 +53,6 @@ pip install ollama
 
 5. Complete the installation and close the terminal.
 
-#### Run Ollama
-
-After pull all models, you need to open the ollama server before running our codes:
-
-```
-./ollama serve
-```
-
 ## Run
 ### Setup
 
@@ -68,10 +60,10 @@ The raw data is based on the [AMiner Computer Science Dataset](https://www.amine
 
 After preprocessing, the used data is publicly available at [Google Drive](https://drive.google.com/drive/folders/1asoKTCXtpbQ0DlL5I-z7b5tLut_67d4C?usp=sharing) (Currently we release the preprocessed data of Computer Science Dataset).
 
-* Past paper database is put in the `Papers/papers.tar.gz`, which is used in `paper_folder_path` of Line 50 in `sci_platform/sci_platform_fast.py`. The corresponding embedding database is put in the `Embeddings/faiss_index.index`, which is used in `cpu_index` of Line 258 in `sci_platform/sci_platform_fast.py`.
-* Contemporary paper database is put in the `Papers/papers_future.tar.gz`, which is used in `future_paper_folder_path` of Line 51 in `sci_platform/sci_platform_fast.py`. The corresponding embedding database is put in the `Embeddings/faiss_index_future.index`, which is used in `cpu_future_index` of Line 268 in `sci_platform/sci_platform_fast.py`.
-* Author knowledge bank is put in the `Authors/books.tar`, which is used in in `input_dir` of Line 49 in `sci_platform/configs/knowledge_config.json` and `author_info_dir` of Line 36 in `sci_platform/sci_platform_fast.py`.
-* Adjacency matrix is put in the `adjacency.txt`, which is used in `adjacency_matrix_dir` of Line 37 in `sci_platform/sci_platform_fast.py`.
+* Past paper database is put in the `Papers/papers.tar.gz`, which is used in `paper_folder_path` of Line 48 in `sci_platform/sci_platform_fast.py`. The corresponding embedding database is put in the `Embeddings/faiss_index.index`, which is used in `paper_index_path` of Line 51 in `sci_platform/sci_platform_fast.py`.
+* Contemporary paper database is put in the `Papers/papers_future.tar.gz`, which is used in `future_paper_folder_path` of Line 49 in `sci_platform/sci_platform_fast.py`. The corresponding embedding database is put in the `Embeddings/faiss_index_future.index`, which is used in `paper_future_index_path` of Line 268 in `sci_platform/sci_platform_fast.py`.
+* Author knowledge bank is put in the `Authors/books.tar`, which is used in in `input_dir` of Line 13 in `sci_platform/configs/knowledge_config.json` and `author_folder_path` of Line 47 in `sci_platform/sci_platform_fast.py`.
+* Adjacency matrix is put in the `adjacency.txt`, which is used in `adjacency_matrix_dir` of Line 50 in `sci_platform/sci_platform_fast.py`.
 
 **Note**
 
@@ -81,24 +73,47 @@ Please replace all paths in `sci_platform/sci_platform_fast.py` with your own se
 
 Here we explain the roles of several critial files.
 
+* `sci_platform/configs/deploy_config.py` defines all hyper-parameter settings.
 * `camel-master/camel/agents/sci_agent.py` defines the customized scientist agent in this project.
-* `sci_platform/run.py` is the main execution file.
+* `sci_platform/run_fast.py` is the main execution file.
 * `sci_platform/sci_platform_fast.py` defines the platform for the initialization of our multi-agent system.
 * `sci_platform/utils/prompt.py` contains all the prompts used.
 * `sci_platform/utils/scientist_utils.py` contains all the common functions used.
 * `sci_platform/sci_team/SciTeam.py` defines the execution mechanism of each scientist team.
 
-Our code support different collaboration settings. The commonly used arguments:
+Our code support different environment settings. The commonly used arguments in `deploy_config.py`:
 
-`--runs`: how many times does the program run
+1. Deploy Setup
 
-`--team_limit`: the max number of teams for a scientist
+`ips`: the ips for the LLM model deployment
 
-`--max_discuss_iteration`: the max discussion iterations for a team in a step
+`port`: the ports of the ip for the LLM model deployment
 
-`--max_team_member`: the max team member of a team (including the team leader)
+2. Experiment Setup
 
-`--epochs`: the allowed time steps for one program run (default value is 6, which is enough for a scientist to finish all steps)
+`agent_num`: how many independent scientists are included in the simulation
+
+`runs`: how many times does the program run
+
+`team_limit`: the max number of teams for a scientist
+
+`max_discuss_iteration`: the max discussion iterations for a team in a step
+
+`max_team_member`: the max team member of a team (including the team leader)
+
+`epochs`: the allowed time steps for one program run (the publish of a complete paper usually needs 5 epochs)
+
+`model_name`: the LLM base model for simulation (e.g., llama3.1)
+
+`leader_mode`: who is the leader (e.g., normal or random)
+
+3. Checkpoint Setup
+
+`checkpoint`: use the checkpoint or create a new program
+
+`test_time`: the name of the test as a checkpoint
+
+`load_time`: the name of the loaded checkpoint
 
 ### Single-GPU
 ```

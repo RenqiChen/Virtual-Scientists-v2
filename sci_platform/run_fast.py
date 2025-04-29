@@ -49,13 +49,6 @@ def parse_arguments():
         default=deploy_config.load_time,
         help="load old file",
     )
-    # root direction
-    parser.add_argument(
-        "--root_dir",
-        type=str,
-        default=deploy_config.root_dir,
-        help="Dataset location.",
-    )
     # how many scientists
     parser.add_argument(
         "--agent_num",
@@ -131,7 +124,6 @@ if __name__ == '__main__':
     while end==False:
         print(f'{len(os.listdir(args.save_dir))} files are created...')
         platform_example = Platform(
-            root_dir = args.root_dir,
             agent_num=args.agent_num,
             model_name=args.model_name,
             ips=args.ips,
@@ -161,6 +153,3 @@ if __name__ == '__main__':
         break
         if len(os.listdir(args.save_dir)) >= args.team_limit*args.runs:
             end = True
-
-# paper_folder_path = "/home/bingxing2/ailab/group/ai4agr/crq/SciSci/papers"  # 替换为实际的文件夹路径
-# paper_dicts = read_txt_files_as_dict(paper_folder_path)
