@@ -1,3 +1,5 @@
+# VirSci-v2
+A more powerful version than [Virtual Scientists](https://github.com/RenqiChen/Virtual-Scientists), which supports a million-agent-level scientific collaboration simulation.
 ## Environment
 ### 1. Clone the Repository
 ```
