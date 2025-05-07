@@ -1,6 +1,14 @@
+<div align="center"><img src="./logo.png" alt="" width="700"></div>
+
 # VirSci-v2
-A more powerful version than [Virtual Scientists](https://github.com/RenqiChen/Virtual-Scientists), which supports a million-agent-level scientific collaboration simulation.
-## Environment
+A more powerful version than [Virtual Scientists](https://github.com/RenqiChen/Virtual-Scientists), which supports a million-agent-level scientific collaboration simulation. Our scientific collaboration includes six sections: (1) collaborator selection; (2) topic selection; (3) idea generation; (4) novelty check; (5) abstract generation; (6) review generation.
+## 📅 Updates
+[2025-04]
+
+1. We release the code and data of VirSci-v2.
+
+2. We release a simple reinforcement learning (RL)-based algorithm for collaborator selection in the `RL-Based` branch.
+## ⚙️ Environment
 ### 1. Clone the Repository
 ```
 git clone https://github.com/RenqiChen/Virtual-Scientists-v2
@@ -55,17 +63,28 @@ pip install ollama
 
 5. Complete the installation and close the terminal.
 
-## Run
+## 💡 Run
 ### Setup
 
 The raw data is based on the [AMiner Computer Science Dataset](https://www.aminer.cn/aminernetwork) and [Open Academic Graph](https://open.aminer.cn/open/article?id=5965cf249ed5db41ed4f52bf).
 
-After preprocessing, the used data is publicly available at [Google Drive](https://drive.google.com/drive/folders/1asoKTCXtpbQ0DlL5I-z7b5tLut_67d4C?usp=sharing) (Currently we release the preprocessed data of Computer Science Dataset).
+After preprocessing, the used data is publicly available at [Google Drive](https://drive.google.com/drive/folders/1ZwWMBQ5oK-l4VuzMa60GbMND0g2EIxIu?usp=sharing).
 
-* Past paper database is put in the `Papers/papers.tar.gz`, which is used in `paper_folder_path` of Line 48 in `sci_platform/sci_platform_fast.py`. The corresponding embedding database is put in the `Embeddings/faiss_index.index`, which is used in `paper_index_path` of Line 51 in `sci_platform/sci_platform_fast.py`.
-* Contemporary paper database is put in the `Papers/papers_future.tar.gz`, which is used in `future_paper_folder_path` of Line 49 in `sci_platform/sci_platform_fast.py`. The corresponding embedding database is put in the `Embeddings/faiss_index_future.index`, which is used in `paper_future_index_path` of Line 268 in `sci_platform/sci_platform_fast.py`.
-* Author knowledge bank is put in the `Authors/books.tar`, which is used in in `input_dir` of Line 13 in `sci_platform/configs/knowledge_config.json` and `author_folder_path` of Line 47 in `sci_platform/sci_platform_fast.py`.
-* Adjacency matrix is put in the `adjacency.txt`, which is used in `adjacency_matrix_dir` of Line 50 in `sci_platform/sci_platform_fast.py`.
+The files in Google Drive is related to `def _init_` of `class Platform` in `sci_platform/sci_platform_fast.py`.
+
+1. Computer Science Dataset
+
+* Past paper database is put in the `Papers/papers.tar.gz`, which is used in `paper_folder_path`. The corresponding embedding database is put in the `Embeddings/faiss_index.index`, which is used in `paper_index_path`.
+* Contemporary paper database is put in the `Papers/papers_future.tar.gz`, which is used in `future_paper_folder_path`. The corresponding embedding database is put in the `Embeddings/faiss_index_future.index`, which is used in `paper_future_index_path`.
+* Author knowledge bank is put in the `Authors/books.tar`, which is used in in `input_dir` in `sci_platform/configs/knowledge_config.json` and `author_folder_path`.
+* Adjacency matrix is put in the `adjacency.txt`, which is used in `adjacency_matrix_dir`.
+
+2. Open Academic Graph Dataset
+
+* Past paper database is put in the `Papers/papers_OAG.zip`, which is used in `paper_folder_path`. The corresponding embedding database is put in the `Embeddings/faiss_index_OAG.index`, which is used in `paper_index_path`.
+* Contemporary paper database is put in the `Papers/papers_future_OAG.tar.gz`, which is used in `future_paper_folder_path`. The corresponding embedding database is put in the `Embeddings/faiss_index_OAG_future.index`, which is used in `paper_future_index_path`.
+* Author knowledge bank is put in the `Authors/books_OAG.zip`, which is used in in `input_dir` in `sci_platform/configs/knowledge_config.json` and `author_folder_path`.
+* Adjacency matrix is put in the `weight_matrix.txt`, which is used in `adjacency_matrix_dir`.
 
 **Note**
 
@@ -76,7 +95,9 @@ Please replace all paths in `sci_platform/sci_platform_fast.py` with your own se
 Here we explain the roles of several critial files.
 
 * `sci_platform/configs/deploy_config.py` defines all hyper-parameter settings.
-* `camel-master/camel/agents/sci_agent.py` defines the customized scientist agent in this project.
+* `sci_platform/social_agent/sci_agent.py` defines the customized scientist agent in this project.
+* `sci_platform/social_agent/channel.py` defines the message sending and receiving, which is the lowest-level module.
+* `sci_platform/inference` controls the messages sent to or received from the channel, which corresponds to different threads.
 * `sci_platform/run_fast.py` is the main execution file.
 * `sci_platform/sci_platform_fast.py` defines the platform for the initialization of our multi-agent system.
 * `sci_platform/utils/prompt.py` contains all the prompts used.
@@ -129,7 +150,7 @@ bash port1.sh
 bash port2.sh
 ```
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
 This project is supported by Shanghai Artificial Intelligence Laboratory.
 
@@ -139,6 +160,6 @@ The concurrent distributed system in this work is based on the [OASIS](https://g
 
 The raw data is based on the [AMiner Computer Science Dataset](https://www.aminer.cn/aminernetwork) and the [Open Academic Graph](https://open.aminer.cn/open/article?id=5965cf249ed5db41ed4f52bf).
 
-## License
+## ⚖️ License
 
 This repository is licensed under the [Apache-2.0 License](LICENSE/).

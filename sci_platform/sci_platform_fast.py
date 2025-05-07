@@ -3,14 +3,12 @@ import os
 import numpy as np
 import json
 import re
-import ollama
 from functools import partial
 import faiss
 from typing import Any
 import random
 
 sys.path.append('../camel-master')
-from camel.agents import SciAgent
 from camel.messages import BaseMessage
 from camel.models import ModelFactory
 from camel.types import ModelPlatformType, ModelType
@@ -27,8 +25,6 @@ from utils.scientist_utils import (
     extract_between_json_tags,
     count_team,
     save2database,
-    read_txt_files_as_list,
-    process_author_text,
     write_txt_file_as_dict,
     read_txt_files_as_dict_continue,
 )
@@ -266,15 +262,6 @@ class Platform:
         # self.author_dicts = read_txt_files_as_list(self.author_folder_path)
         self.paper_future_dicts = read_txt_files_as_dict(self.paper_future_folder_path)
 
-    def init_reviewer(self, agent_id, model):
-        name = 'Paper Reviewer{}'.format(agent_id)
-        prompt = BaseMessage.make_assistant_message(
-            role_name=name,
-            content=f'You are {name}. ' + Prompts.prompt_review_system,
-        )
-        agent = SciAgent(prompt, model=model, token_limit=32768, message_window_size = self.recent_n_agent_mem_for_retrieve)
-        return agent
-
     def init_reviewer_async(self, channel, embed_channel, count):
         agents=[]
         inference_channel=channel
@@ -287,19 +274,6 @@ class Platform:
             agent = SciAgent_Async(prompt, channel=inference_channel, embed_channel=embed_channel, token_limit=32768)
             agents.append(agent)
         return agents
-
-    def init_agent(self, agent_id, model, information_path):
-        # load author info
-        with open(information_path, 'r') as file:
-            prompt = file.read()
-        name = 'Scientist{}'.format(agent_id)
-        prompt = BaseMessage.make_assistant_message(
-            role_name=name,
-            content=prompt,
-        )
-        agent = SciAgent(prompt, model=model, token_limit=32768, message_window_size = self.recent_n_agent_mem_for_retrieve)
-
-        return agent
 
     def init_agent_async(self, channel, embed_channel, information_path, count):
         agents = []
