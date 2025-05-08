@@ -105,7 +105,7 @@ def select_authors(trainable_adjmatrix, sampleID2coord, sample_num, epsilon):
     author_ids.sort()
     for i in range(len(author_ids)):
         for j in range(i+1, len(author_ids)):
-            sampled_ids.append(coord2sampleID[(i, j)])
+            sampled_ids.append(coord2sampleID[(author_ids[i], author_ids[j])])
     return sampled_ids, author_ids
 
 def generate_prompts(agent_num, output_dir):
