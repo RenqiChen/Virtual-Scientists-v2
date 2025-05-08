@@ -37,17 +37,25 @@ def select_authors(trainable_adjmatrix, sampleID2coord, sample_num, epsilon):
     author_ids = []
     sampled_ids = []
     edge_probs = trainable_adjmatrix.detach().clone().tolist()
+    full_edge_probs = trainable_adjmatrix.detach().clone().tolist()
     edge_ids = [i for i in range(len(edge_probs))]
+    full_edge_ids = [i for i in range(len(edge_probs))]
+
+    # global-wise explore
+    random_sampling = False
+    random_number = random.random()
+    if random_number < epsilon:
+        random_sampling = True
 
     for i in range(sample_edge_num):
         # avoid circle
         sampling = True
-        random_sampling = False
 
-        # step-wise explore
-        random_number = random.random()
-        if random_number < epsilon:
-            random_sampling = True
+        # # step-wise explore
+        # random_sampling = False
+        # random_number = random.random()
+        # if random_number < epsilon:
+        #     random_sampling = True
 
         if random_sampling:
             while sampling:
@@ -86,10 +94,10 @@ def select_authors(trainable_adjmatrix, sampleID2coord, sample_num, epsilon):
         # 4. update edge_ids and edge_probs
         edge_probs_ = []
         edge_ids_ = []
-        for i in range(len(edge_ids)):
-            if sampleID2coord[edge_ids[i]][0] in author_ids or sampleID2coord[edge_ids[i]][1] in author_ids:
-                edge_probs_.append(edge_probs[i])
-                edge_ids_.append(edge_ids[i])
+        for i in range(len(full_edge_ids)):
+            if sampleID2coord[full_edge_ids[i]][0] in author_ids or sampleID2coord[full_edge_ids[i]][1] in author_ids:
+                edge_probs_.append(full_edge_probs[i])
+                edge_ids_.append(full_edge_ids[i])
         edge_probs = edge_probs_
         edge_ids = edge_ids_
 
@@ -182,15 +190,15 @@ def draw_overall_reward_trend(overall_reward_trend, output_dir):
     plt.close()
 
 if __name__ == "__main__":
-    total_epoch = 100
+    total_epoch = 200
     beginning_epoch_id = 0 # if start with a checkpoint then this would not be 0
     max_discussion_turn = 1
     learning_rate = 0.1
     model_type = 'llama3.1'
 
     sample_size = 5
-    agent_num = 50 # total number of init agents
-    epsilon = 0.4
+    agent_num = 30 # total number of init agents
+    epsilon = 0.1
 
     only_load_same_authors = True
 
@@ -204,6 +212,10 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam([trainable_adjmatrix], lr=learning_rate)
     overall_reward_trend = []
     sampleID2coord = adjmatrixID2coord(agent_num)
+
+    # # draw init matrix
+    # adjmatrix4fig = convert_list2matrix(torch.nn.functional.sigmoid(trainable_adjmatrix), agent_num)
+    # draw_adjmatrix4probability(adjmatrix4fig, output_dir)
 
     # Check if checkpoint exists
     if os.path.exists(os.path.join(output_dir, 'checkpoint.pth')):
