@@ -141,12 +141,12 @@ Our code support different environment settings. The commonly used arguments in 
 
 `load_time`: the name of the loaded checkpoint
 
-### Single-GPU
+### Run on Single-GPU
 ```
 cd sci_platform
 bash port2.sh
 ```
-### Multi-GPU
+### Run on Multi-GPU
 ```
 cd sci_platform
 bash port1.sh
