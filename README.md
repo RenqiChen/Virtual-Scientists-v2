@@ -141,12 +141,19 @@ Our code support different environment settings. The commonly used arguments in 
 
 `load_time`: the name of the loaded checkpoint
 
-### Run on Single-GPU
+### Distributed Running
+#### Single Machine (Single-GPU/Multi-GPU)
+
+In `deploy_config.py`, set the `ips=['127.0.0.1']`. In `port2.sh`, `CUDA_VISIBLE_DEVICES` means how many GPUs are used and `OLLAMA_HOST=0.0.0.0:XXXXX` means the port of one GPU is deployed with a LLM model.
+
 ```
 cd sci_platform
 bash port2.sh
 ```
-### Run on Multi-GPU
+### Multi-Machine (Multi-GPU)
+
+In `deploy_config.py`, set the `ips` includes the ips of all machines. `port1.sh` is to deploy LLM models on these distributed machines.
+
 ```
 cd sci_platform
 bash port1.sh
