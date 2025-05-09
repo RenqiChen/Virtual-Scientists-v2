@@ -3,11 +3,14 @@
 # VirSci-v2
 A more powerful version than [Virtual Scientists](https://github.com/RenqiChen/Virtual-Scientists), which supports a million-agent-level scientific collaboration simulation. Our scientific collaboration includes six sections: (1) collaborator selection; (2) topic selection; (3) idea generation; (4) novelty check; (5) abstract generation; (6) review generation.
 ## 📅 Updates
+[2025-05]
+
+1. We release a simple reinforcement learning (RL)-based algorithm for collaborator selection in the `RL-Based` branch.
+
 [2025-04]
 
-1. We release the code and data of VirSci-v2.
+1. We release the code and data of VirSci-v2, which is a powerful platform for scientfic collaboration simulation.
 
-2. We release a simple reinforcement learning (RL)-based algorithm for collaborator selection in the `RL-Based` branch.
 ## ⚙️ Environment
 ### 1. Clone the Repository
 ```
