@@ -225,8 +225,8 @@ This repository is licensed under the [Apache-2.0 License](LICENSE/).
 ## 📌 Citation
 If you find this repository useful, please consider citing our work:
 ```bibtex
-@software{Chen_GraphGen_2025,
-author = {Chen, Renqi and Su, Haoyang},
+@software{Chen_VirSciv2_2025,
+author = {Renqi Chen and Haoyang Su},
 month = apr,
 title = {{VirSci-v2}},
 url = {https://github.com/RenqiChen/Virtual-Scientists-v2},
