@@ -160,6 +160,54 @@ bash port1.sh
 bash port2.sh
 ```
 
+## 📉 Results and Evaluation
+All information during simulation will be saved at `sci_platform/{self.checkpoint_path}/{self.test_time}` folder. In this folder, the structure of data follows:
+```
+├── citation
+├── faiss
+├── paper
+├── team
+├── database_large.db
+└── weight_matrix.txt
+```
+
+`citation` folder saves the citations of paper which are cited in the nearest epoch.
+
+`faiss` folder saves the embeddings of all paper, including the original paper from public database and newly published paper from the simulation.
+
+`paper` folder saves the text of all paper in the form of `.txt`, including the original paper from public database and newly published paper from the simulation.
+
+`team` folder saves the team data of each scientist.
+
+`database_large.db` saves the data of all paper, including the original paper from public database and newly published paper from the simulation. We use `sqlite3` Python Library to manage the simulation database, where the form of data follows:
+```
+cursor.execute('''
+        CREATE TABLE IF NOT EXISTS papers (
+            id INTEGER PRIMARY KEY,
+            title TEXT,
+            authors TEXT,
+            cite_papers TEXT,
+            abstract TEXT,
+            year INTEGER,
+            citation INTEGER,
+            reviews TEXT,
+            discipline TEXT,
+            keyword TEXT
+        )
+    ''')
+``` 
+While `title, authors, abstract, keyword` are esay to understand, several other items require explaination: 
+* `id` is the ID number of the paper.
+* `cite_papers` is the reference of the paper, composed of numbers and combined with comma.
+*  `year` is the publication time of the paper. If the paper is extracted from the original public database, the value will be set as `-1`. If the paper is generated from the simulation, the value will set as `epoch` (e.g., 1).
+* `citation` is the citation count of the paper.
+* `reviews` is a list of review scores, which stores the results of review at different epochs.
+* `discipline` denotes the discipline of the paper.
+
+`weight_matrix.txt` saves the collaboration times between scientist after weighted sum.
+
+Please feel free to evaluate these results for specific Science of Science analysis.
+
 ## 🙏 Acknowledgements
 
 This project is supported by Shanghai Artificial Intelligence Laboratory.
@@ -173,3 +221,15 @@ The raw data is based on the [AMiner Computer Science Dataset](https://www.amine
 ## ⚖️ License
 
 This repository is licensed under the [Apache-2.0 License](LICENSE/).
+
+## 📌 Citation
+If you find this repository useful, please consider citing our work:
+```bibtex
+@software{Chen_GraphGen_2025,
+author = {Chen, Renqi and Su, Haoyang},
+month = apr,
+title = {{VirSci-v2}},
+url = {https://github.com/RenqiChen/Virtual-Scientists-v2},
+year = {2025}
+}
+```
