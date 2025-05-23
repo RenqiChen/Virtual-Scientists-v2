@@ -5,6 +5,10 @@ A more powerful version than [Virtual Scientists](https://github.com/RenqiChen/V
 ## 📅 Updates
 [2025-05]
 
+1. The related paper is available on [Arxiv](https://arxiv.org/abs/2505.12039).
+
+[2025-05]
+
 1. We release a simple reinforcement learning (RL)-based algorithm for collaborator selection in the `RL-Based` branch.
 
 [2025-04]
