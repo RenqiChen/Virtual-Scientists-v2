@@ -228,6 +228,14 @@ This repository is licensed under the [Apache-2.0 License](LICENSE/).
 
 ## 📌 Citation
 If you find this repository useful, please consider citing our work:
+```
+@article{chen2025ai,
+  title={AI-Driven Automation Can Become the Foundation of Next-Era Science of Science Research},
+  author={Chen, Renqi and Su, Haoyang and Tang, Shixiang and Yin, Zhenfei and Wu, Qi and Li, Hui and Sun, Ye and Dong, Nanqing and Ouyang, Wanli and Torr, Philip},
+  journal={arXiv preprint arXiv:2505.12039},
+  year={2025}
+}
+```
 ```bibtex
 @software{Chen_VirSciv2_2025,
 author = {Renqi Chen and Haoyang Su},
@@ -237,3 +245,4 @@ url = {https://github.com/RenqiChen/Virtual-Scientists-v2},
 year = {2025}
 }
 ```
+
